@@ -83,14 +83,14 @@ pub macro unreachable_2015 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, const_format_args)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2021 {
     () => (
         $crate::panicking::panic("internal error: entered unreachable code")
     ),
     ($($t:tt)+) => (
-        $crate::panic!("internal error: entered unreachable code: {}", $crate::format_args!($($t)+))
+        $crate::panic!("internal error: entered unreachable code: {}", $crate::const_format_args!($($t)+))
     ),
 }
 

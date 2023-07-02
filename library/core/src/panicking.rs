@@ -203,6 +203,18 @@ pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 }
 
+/// Check if we can skip format args
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn is_fmt_str(s: &str) {
+    for off in 0..s.len() {
+        /// SAFETY: 
+        if unsafe { *s.as_ptr().add(off) } == b'{' {
+            return true;
+        }
+    }
+    false;
+}
+
 #[derive(Debug)]
 #[doc(hidden)]
 pub enum AssertKind {

@@ -12,10 +12,13 @@ const B: () = std::panic!();
 const C: () = std::unreachable!();
 //~^ ERROR evaluation of constant value failed
 
-const D: () = std::unimplemented!();
+const D: () = std::unreachable!("not a chance");
 //~^ ERROR evaluation of constant value failed
 
-const E: () = std::panic!("{}", MSG);
+const E: () = std::unimplemented!();
+//~^ ERROR evaluation of constant value failed
+
+const F: () = std::panic!("{}", MSG);
 //~^ ERROR evaluation of constant value failed
 
 const A_CORE: () = core::panic!("shark");
@@ -27,8 +30,11 @@ const B_CORE: () = core::panic!();
 const C_CORE: () = core::unreachable!();
 //~^ ERROR evaluation of constant value failed
 
-const D_CORE: () = core::unimplemented!();
+const D_CORE: () = std::unreachable!("not a chance");
 //~^ ERROR evaluation of constant value failed
 
-const E_CORE: () = core::panic!("{}", MSG);
+const E_CORE: () = core::unimplemented!();
+//~^ ERROR evaluation of constant value failed
+
+const F_CORE: () = core::panic!("{}", MSG);
 //~^ ERROR evaluation of constant value failed
