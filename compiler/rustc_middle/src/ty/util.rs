@@ -938,8 +938,10 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Char => Some(std::char::MAX as u128),
             ty::Float(fty) => Some(match fty {
+                ty::FloatTy::F16 => rustc_apfloat::ieee::Half::INFINITY.to_bits(),
                 ty::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
                 ty::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+                ty::FloatTy::F128 => rustc_apfloat::ieee::Quad::INFINITY.to_bits(),
             }),
             _ => None,
         };
@@ -958,8 +960,10 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Char => Some(0),
             ty::Float(fty) => Some(match fty {
-                ty::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
-                ty::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+                ty::FloatTy::F16 => (-rustc_apfloat::ieee::Half::INFINITY).to_bits(),
+                ty::FloatTy::F32 => (-rustc_apfloat::ieee::Single::INFINITY).to_bits(),
+                ty::FloatTy::F64 => (-rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+                ty::FloatTy::F128 => (-rustc_apfloat::ieee::Quad::INFINITY).to_bits(),
             }),
             _ => None,
         };
