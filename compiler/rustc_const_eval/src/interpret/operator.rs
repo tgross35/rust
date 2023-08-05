@@ -380,11 +380,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = left.to_scalar();
                 let right = right.to_scalar();
                 Ok(match fty {
+                    FloatTy::F16 => {
+                        self.binary_float_op(bin_op, ty, left.to_f16()?, right.to_f16()?)
+                    }
                     FloatTy::F32 => {
                         self.binary_float_op(bin_op, ty, left.to_f32()?, right.to_f32()?)
                     }
                     FloatTy::F64 => {
                         self.binary_float_op(bin_op, ty, left.to_f64()?, right.to_f64()?)
+                    }
+                    FloatTy::F128 => {
+                        self.binary_float_op(bin_op, ty, left.to_f128()?, right.to_f128()?)
                     }
                 })
             }
