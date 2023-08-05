@@ -107,8 +107,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     pub(crate) fn type_float_from_ty(&self, t: ty::FloatTy) -> &'ll Type {
         match t {
+            ty::FloatTy::F16 => self.type_f16(),
             ty::FloatTy::F32 => self.type_f32(),
             ty::FloatTy::F64 => self.type_f64(),
+            ty::FloatTy::F128 => self.type_f128(),
         }
     }
 
@@ -156,12 +158,20 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.isize_ty
     }
 
+    fn type_f16(&self) -> &'ll Type {
+        unsafe { llvm::LLVMHalfTypeInContext(self.llcx) }
+    }
+
     fn type_f32(&self) -> &'ll Type {
         unsafe { llvm::LLVMFloatTypeInContext(self.llcx) }
     }
 
     fn type_f64(&self) -> &'ll Type {
         unsafe { llvm::LLVMDoubleTypeInContext(self.llcx) }
+    }
+
+    fn type_f128(&self) -> &'ll Type {
+        unsafe { llvm::LLVMFP128TypeInContext(self.llcx) }
     }
 
     fn type_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
