@@ -45,6 +45,13 @@ pub trait DecodableFloat: RawFloat + Copy {
     fn min_pos_norm_value() -> Self;
 }
 
+#[cfg(not(bootstrap))]
+impl DecodableFloat for f16 {
+    fn min_pos_norm_value() -> Self {
+        f16::MIN_POSITIVE
+    }
+}
+
 impl DecodableFloat for f32 {
     fn min_pos_norm_value() -> Self {
         f32::MIN_POSITIVE
@@ -54,6 +61,13 @@ impl DecodableFloat for f32 {
 impl DecodableFloat for f64 {
     fn min_pos_norm_value() -> Self {
         f64::MIN_POSITIVE
+    }
+}
+
+#[cfg(not(bootstrap))]
+impl DecodableFloat for f128 {
+    fn min_pos_norm_value() -> Self {
+        f128::MIN_POSITIVE
     }
 }
 

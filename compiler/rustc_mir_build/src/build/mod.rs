@@ -1,6 +1,6 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -967,13 +967,60 @@ fn parse_float_into_constval<'tcx>(
     parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
 }
 
+// #[cfg(not(bootstrap))]
+// fn parse_f16(num: &str) -> Option<f16> {
+//     num.parse().ok()
+// }
+
+// FIXME: bootstrap `f16` parsing via `f32`
+// #[cfg(bootstrap)]
+fn parse_f16(num: &str) -> Option<f32> {
+    num.parse().ok()
+}
+
+// #[cfg(not(bootstrap))]
+// fn parse_f128(num: &str) -> Option<f128> {
+//     num.parse().ok()
+// }
+
+// FIXME: bootstrap `f16` parsing via `f32`
+// #[cfg(bootstrap)]
+fn parse_f128(num: &str) -> Option<f64> {
+    num.parse().ok()
+}
+
 pub(crate) fn parse_float_into_scalar(
     num: Symbol,
     float_ty: ty::FloatTy,
     neg: bool,
 ) -> Option<Scalar> {
     let num = num.as_str();
+
     match float_ty {
+        ty::FloatTy::F16 => {
+            let rust_f = parse_f16(num)?;
+
+            let mut f = num
+                .parse::<Half>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Half failed to parse `{num}`: {e:?}"));
+
+            assert!(
+                u128::from(rust_f.to_bits()) == f.to_bits(),
+                "apfloat::ieee::Half gave different result for `{}`: \
+                 {}({:#x}) vs Rust's {}({:#x})",
+                rust_f,
+                f,
+                f.to_bits(),
+                Half::from_bits(rust_f.to_bits().into()),
+                rust_f.to_bits()
+            );
+
+            if neg {
+                f = -f;
+            }
+
+            Some(Scalar::from_f16(f))
+        }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1019,6 +1066,29 @@ pub(crate) fn parse_float_into_scalar(
             }
 
             Some(Scalar::from_f64(f))
+        }
+        ty::FloatTy::F128 => {
+            let rust_f = parse_f128(num)?;
+            let mut f = num
+                .parse::<Quad>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Quad failed to parse `{num}`: {e:?}"));
+
+            assert!(
+                u128::from(rust_f.to_bits()) == f.to_bits(),
+                "apfloat::ieee::Quad gave different result for `{}`: \
+                 {}({:#x}) vs Rust's {}({:#x})",
+                rust_f,
+                f,
+                f.to_bits(),
+                Quad::from_bits(rust_f.to_bits().into()),
+                rust_f.to_bits()
+            );
+
+            if neg {
+                f = -f;
+            }
+
+            Some(Scalar::from_f128(f))
         }
     }
 }

@@ -750,6 +750,8 @@ symbols! {
         floorf16,
         floorf32,
         floorf64,
+        fmaf128,
+        fmaf16,
         fmaf32,
         fmaf64,
         fmt,
