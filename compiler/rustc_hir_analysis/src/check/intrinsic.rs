@@ -105,11 +105,15 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
         | sym::likely
         | sym::unlikely
         | sym::ptr_guaranteed_cmp
+        | sym::minnumf16
         | sym::minnumf32
         | sym::minnumf64
+        | sym::minnumf128
+        | sym::maxnumf16
         | sym::maxnumf32
-        | sym::rustc_peek
         | sym::maxnumf64
+        | sym::maxnumf128
+        | sym::rustc_peek
         | sym::type_name
         | sym::forget
         | sym::black_box
@@ -282,8 +286,13 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 Ty::new_unit(tcx),
             ),
+            #[cfg(not(bootstrap))]
+            sym::sqrtf16 => (0, vec![tcx.types.f16], tcx.types.f16),
             sym::sqrtf32 => (0, vec![tcx.types.f32], tcx.types.f32),
             sym::sqrtf64 => (0, vec![tcx.types.f64], tcx.types.f64),
+            #[cfg(not(bootstrap))]
+            sym::sqrtf128 => (0, vec![tcx.types.f128], tcx.types.f128),
+            sym::powif16 => (0, vec![tcx.types.f16, tcx.types.i32], tcx.types.f16),
             sym::powif32 => (0, vec![tcx.types.f32, tcx.types.i32], tcx.types.f32),
             sym::powif64 => (0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
             sym::sinf32 => (0, vec![tcx.types.f32], tcx.types.f32),
