@@ -274,10 +274,10 @@ impl TargetDataLayout {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
                 ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
-                ["f16", ref a @ ..] => dl.f32_align = align(a, "f16")?,
+                ["f16", ref a @ ..] => dl.f16_align = align(a, "f16")?,
                 ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
                 ["f64", ref a @ ..] => dl.f64_align = align(a, "f64")?,
-                ["f128", ref a @ ..] => dl.f32_align = align(a, "f128")?,
+                ["f128", ref a @ ..] => dl.f128_align = align(a, "f128")?,
                 // FIXME(erikdesjardins): we should be parsing nonzero address spaces
                 // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
                 // with e.g. `fn pointer_size_in(AddressSpace)`
