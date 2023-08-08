@@ -3043,13 +3043,13 @@ impl Step for CodegenCranelift {
             .arg("--no-unstable-features")
             .arg("--use-backend")
             .arg("cranelift");
-            // // Avoid having to vendor the standard library dependencies
-            // .arg("--sysroot")
-            // .arg("llvm")
-            // // These tests depend on crates that are not yet vendored
-            // // FIXME remove once vendoring is handled
-            // .arg("--skip-test")
-            // .arg("testsuite.extended_sysroot");
+        // // Avoid having to vendor the standard library dependencies
+        // .arg("--sysroot")
+        // .arg("llvm")
+        // // These tests depend on crates that are not yet vendored
+        // // FIXME remove once vendoring is handled
+        // .arg("--skip-test")
+        // .arg("testsuite.extended_sysroot");
         cargo.args(builder.config.test_args());
 
         #[allow(deprecated)]
