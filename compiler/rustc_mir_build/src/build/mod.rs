@@ -967,26 +967,48 @@ fn parse_float_into_constval<'tcx>(
     parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
 }
 
-// #[cfg(not(bootstrap))]
-// fn parse_f16(num: &str) -> Option<f16> {
-//     num.parse().ok()
-// }
+#[cfg(not(bootstrap))]
+fn parse_check_f16(num: &str, f: Half) -> Option<()> {
+    let Ok(rust_f) = num.parse::<f16>() else { return None };
 
-// FIXME: bootstrap `f16` parsing via `f32`
-// #[cfg(bootstrap)]
-fn parse_f16(num: &str) -> Option<f32> {
-    num.parse().ok()
+    assert!(
+        u128::from(rust_f.to_bits()) == f.to_bits(),
+        "apfloat::ieee::Half gave different result for `{rust_f}`: \
+         {f}({:#x}) vs Rust's {}({:#x})",
+        f.to_bits(),
+        Single::from_bits(rust_f.to_bits().into()),
+        rust_f.to_bits()
+    );
+
+    Some(())
 }
 
-// #[cfg(not(bootstrap))]
-// fn parse_f128(num: &str) -> Option<f128> {
-//     num.parse().ok()
-// }
+// FIXME:f16_f128: bootstrap `f16` parsing via `f32`
+#[cfg(bootstrap)]
+fn parse_check_f16(_num: &str, _f: Half) -> Option<()> {
+    Some(())
+}
 
-// FIXME: bootstrap `f16` parsing via `f32`
-// #[cfg(bootstrap)]
-fn parse_f128(num: &str) -> Option<f64> {
-    num.parse().ok()
+#[cfg(not(bootstrap))]
+fn parse_check_f128(num: &str, f: Quad) -> Option<()> {
+    let Ok(rust_f) = num.parse::<f128>() else { return None };
+
+    assert!(
+        u128::from(rust_f.to_bits()) == f.to_bits(),
+        "apfloat::ieee::Quad gave different result for `{rust_f}`: \
+         {f}({:#x}) vs Rust's {}({:#x})",
+        f.to_bits(),
+        Quad::from_bits(rust_f.to_bits().into()),
+        rust_f.to_bits()
+    );
+
+    Some(())
+}
+
+// FIXME:f16_f128: bootstrap `f128` parsing via `f64`
+#[cfg(bootstrap)]
+fn parse_check_f128(_num: &str, _f: Quad) -> Option<()> {
+    Some(())
 }
 
 pub(crate) fn parse_float_into_scalar(
@@ -998,22 +1020,11 @@ pub(crate) fn parse_float_into_scalar(
 
     match float_ty {
         ty::FloatTy::F16 => {
-            let rust_f = parse_f16(num)?;
-
             let mut f = num
                 .parse::<Half>()
                 .unwrap_or_else(|e| panic!("apfloat::ieee::Half failed to parse `{num}`: {e:?}"));
 
-            assert!(
-                u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Half gave different result for `{}`: \
-                 {}({:#x}) vs Rust's {}({:#x})",
-                rust_f,
-                f,
-                f.to_bits(),
-                Half::from_bits(rust_f.to_bits().into()),
-                rust_f.to_bits()
-            );
+            parse_check_f16(num, f)?;
 
             if neg {
                 f = -f;
@@ -1029,10 +1040,8 @@ pub(crate) fn parse_float_into_scalar(
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Single gave different result for `{}`: \
-                 {}({:#x}) vs Rust's {}({:#x})",
-                rust_f,
-                f,
+                "apfloat::ieee::Single gave different result for `{rust_f}`: \
+                 {f}({:#x}) vs Rust's {}({:#x})",
                 f.to_bits(),
                 Single::from_bits(rust_f.to_bits().into()),
                 rust_f.to_bits()
@@ -1052,10 +1061,8 @@ pub(crate) fn parse_float_into_scalar(
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Double gave different result for `{}`: \
-                 {}({:#x}) vs Rust's {}({:#x})",
-                rust_f,
-                f,
+                "apfloat::ieee::Double gave different result for `{rust_f}`: \
+                 {f}({:#x}) vs Rust's {}({:#x})",
                 f.to_bits(),
                 Double::from_bits(rust_f.to_bits().into()),
                 rust_f.to_bits()
@@ -1068,21 +1075,11 @@ pub(crate) fn parse_float_into_scalar(
             Some(Scalar::from_f64(f))
         }
         ty::FloatTy::F128 => {
-            let rust_f = parse_f128(num)?;
             let mut f = num
                 .parse::<Quad>()
                 .unwrap_or_else(|e| panic!("apfloat::ieee::Quad failed to parse `{num}`: {e:?}"));
 
-            assert!(
-                u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Quad gave different result for `{}`: \
-                 {}({:#x}) vs Rust's {}({:#x})",
-                rust_f,
-                f,
-                f.to_bits(),
-                Quad::from_bits(rust_f.to_bits().into()),
-                rust_f.to_bits()
-            );
+            parse_check_f128(num, f);
 
             if neg {
                 f = -f;
