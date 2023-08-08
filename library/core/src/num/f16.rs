@@ -110,11 +110,11 @@ impl f16 {
 
     /// Number of significant digits in base 2.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MANTISSA_DIGITS: u32 = 53;
+    pub const MANTISSA_DIGITS: u32 = 11;
 
     /// Approximate number of significant digits in base 10.
     #[unstable(feature = "f16", issue = "none")]
-    pub const DIGITS: u32 = 15;
+    pub const DIGITS: u32 = 3;
 
     /// [Machine epsilon] value for `f16`.
     ///
@@ -122,34 +122,34 @@ impl f16 {
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     #[unstable(feature = "f16", issue = "none")]
-    pub const EPSILON: f16 = 0.00097656_f16;
+    pub const EPSILON: f16 = 0.0009765625_f16;
 
     /// Smallest finite `f16` value.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MIN: f16 = -1.7976931348623157e+308_f16;
+    pub const MIN: f16 = -65504.0_f16;
 
     /// Smallest positive normal `f16` value.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MIN_POSITIVE: f16 = 0.000000059604645_f16;
+    pub const MIN_POSITIVE: f16 = 6.1035156e-5_f16;
 
     /// Largest finite `f16` value.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MAX: f16 = 65504_f16;
+    pub const MAX: f16 = 65504.0;
 
     /// One greater than the minimum possible normal power of 2 exponent.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MIN_EXP: i32 = -1021;
+    pub const MIN_EXP: i32 = -13;
 
     /// Maximum possible power of 2 exponent.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MAX_EXP: i32 = 1024;
+    pub const MAX_EXP: i32 = 16;
 
     /// Minimum possible normal power of 10 exponent.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MIN_10_EXP: i32 = -307;
+    pub const MIN_10_EXP: i32 = -4;
     /// Maximum possible power of 10 exponent.
     #[unstable(feature = "f16", issue = "none")]
-    pub const MAX_10_EXP: i32 = 308;
+    pub const MAX_10_EXP: i32 = 4;
 
     /// Not a Number (NaN).
     ///
@@ -170,6 +170,13 @@ impl f16 {
     /// Negative infinity (−∞).
     #[unstable(feature = "f16", issue = "none")]
     pub const NEG_INFINITY: f16 = -1.0_f16 / 0.0_f16;
+
+    pub(crate) const EXP_MASK: u16 = 0x7c00;
+    pub(crate) const MAN_MASK: u16 = 0x03ff;
+    pub(crate) const TINY_BITS: u16 = 0x1; // Smallest positive f16.
+    pub(crate) const NEG_TINY_BITS: u16 = 0x8001; // Smallest (in magnitude) negative f16.
+    pub(crate) const SIGN_MASK: u16 = 1 << 15;
+    pub(crate) const CLEAR_SIGN_MASK: u16 = !Self::SIGN_MASK;
 
     /// Returns `true` if this value is NaN.
     ///
@@ -196,7 +203,7 @@ impl f16 {
     pub(crate) const fn abs_private(self) -> f16 {
         // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
         unsafe {
-            mem::transmute::<u16, f16>(mem::transmute::<f16, u16>(self) & 0x7fff_ffff_ffff_ffff)
+            mem::transmute::<u16, f16>(mem::transmute::<f16, u16>(self) & Self::CLEAR_SIGN_MASK)
         }
     }
 
@@ -354,13 +361,10 @@ impl f16 {
     // and some normal floating point numbers truncated from an x87 FPU.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
-        const EXP_MASK: u16 = 0x7ff0000000000000;
-        const MAN_MASK: u16 = 0x000fffffffffffff;
-
         // SAFETY: The caller is not asking questions for which this will tell lies.
         let b = unsafe { mem::transmute::<f16, u16>(self) };
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -372,12 +376,9 @@ impl f16 {
     // plus a transmute. We do not live in a just world, but we can make it more so.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const fn classify_bits(b: u16) -> FpCategory {
-        const EXP_MASK: u16 = 0x7ff0000000000000;
-        const MAN_MASK: u16 = 0x000fffffffffffff;
-
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
-            (_, EXP_MASK) => FpCategory::Nan,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -437,7 +438,7 @@ impl f16 {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
         // SAFETY: This is just transmuting to get the sign bit, it's fine.
-        unsafe { mem::transmute::<f16, u16>(self) & 0x8000_0000_0000_0000 != 0 }
+        unsafe { mem::transmute::<f16, u16>(self) & Self::SIGN_MASK != 0 }
     }
 
     #[must_use]
@@ -480,17 +481,14 @@ impl f16 {
     pub const fn next_up(self) -> Self {
         // We must use strictly integer arithmetic to prevent denormals from
         // flushing to zero after an arithmetic operation on some platforms.
-        const TINY_BITS: u16 = 0x1; // Smallest positive f16.
-        const CLEAR_SIGN_MASK: u16 = 0x7fff_ffff_ffff_ffff;
-
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & Self::CLEAR_SIGN_MASK;
         let next_bits = if abs == 0 {
-            TINY_BITS
+            Self::TINY_BITS
         } else if bits == abs {
             bits + 1
         } else {
@@ -530,17 +528,14 @@ impl f16 {
     pub const fn next_down(self) -> Self {
         // We must use strictly integer arithmetic to prevent denormals from
         // flushing to zero after an arithmetic operation on some platforms.
-        const NEG_TINY_BITS: u16 = 0x8000_0000_0000_0001; // Smallest (in magnitude) negative f16.
-        const CLEAR_SIGN_MASK: u16 = 0x7fff_ffff_ffff_ffff;
-
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & Self::CLEAR_SIGN_MASK;
         let next_bits = if abs == 0 {
-            NEG_TINY_BITS
+            Self::NEG_TINY_BITS
         } else if bits == abs {
             bits - 1
         } else {

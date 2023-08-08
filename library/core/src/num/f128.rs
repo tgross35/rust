@@ -108,11 +108,11 @@ pub mod consts {
 impl f128 {
     /// The radix or base of the internal representation of `f128`.
     #[unstable(feature = "f128", issue = "none")]
-    pub const RADIX: u32 = 2;
+    pub const RADIX: u32 = 128;
 
     /// Number of significant digits in base 2.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MANTISSA_DIGITS: u32 = 53;
+    pub const MANTISSA_DIGITS: u32 = 112;
 
     /// Approximate number of significant digits in base 10.
     #[unstable(feature = "f128", issue = "none")]
@@ -124,34 +124,34 @@ impl f128 {
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     #[unstable(feature = "f128", issue = "none")]
-    pub const EPSILON: f128 = 0.00097656_f128;
+    pub const EPSILON: f128 = 1.93e-34_f128;
 
     /// Smallest finite `f128` value.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MIN: f128 = -1.7976931348623157e+308_f128;
+    pub const MIN: f128 = -1.18973e+4932_f128;
 
     /// Smallest positive normal `f128` value.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MIN_POSITIVE: f128 = 0.000000059604645_f128;
+    pub const MIN_POSITIVE: f128 = 1.94652e-4855_f128;
 
     /// Largest finite `f128` value.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MAX: f128 = 65504_f128;
+    pub const MAX: f128 = 1.18973e+4932_f128;
 
     /// One greater than the minimum possible normal power of 2 exponent.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MIN_EXP: i32 = -1021;
+    pub const MIN_EXP: i32 = -16382;
 
     /// Maximum possible power of 2 exponent.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MAX_EXP: i32 = 1024;
+    pub const MAX_EXP: i32 = 16383;
 
     /// Minimum possible normal power of 10 exponent.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MIN_10_EXP: i32 = -307;
+    pub const MIN_10_EXP: i32 = -4931;
     /// Maximum possible power of 10 exponent.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MAX_10_EXP: i32 = 308;
+    pub const MAX_10_EXP: i32 = 4932;
 
     /// Not a Number (NaN).
     ///
@@ -172,6 +172,14 @@ impl f128 {
     /// Negative infinity (−∞).
     #[unstable(feature = "f128", issue = "none")]
     pub const NEG_INFINITY: f128 = -1.0_f128 / 0.0_f128;
+
+    pub(crate) const EXP_MASK: u128 = 0x7fff0000000000000000000000000000;
+    pub(crate) const MAN_MASK: u128 = 0x0000ffffffffffffffffffffffffffff;
+    pub(crate) const TINY_BITS: u128 = 0x1; // Smallest positive f128.
+    // Smallest (in magnitude) negative f128.
+    pub(crate) const NEG_TINY_BITS: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0001;
+    pub(crate) const SIGN_MASK: u128 = 1 << 127;
+    pub(crate) const CLEAR_SIGN_MASK: u128 = !Self::SIGN_MASK;
 
     /// Returns `true` if this value is NaN.
     ///
@@ -198,7 +206,7 @@ impl f128 {
     pub(crate) const fn abs_private(self) -> f128 {
         // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
         unsafe {
-            mem::transmute::<u128, f128>(mem::transmute::<f128, u128>(self) & 0x7fff_ffff_ffff_ffff)
+            mem::transmute::<u128, f128>(mem::transmute::<f128, u128>(self) & Self::CLEAR_SIGN_MASK)
         }
     }
 
@@ -356,13 +364,10 @@ impl f128 {
     // and some normal floating point numbers truncated from an x87 FPU.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
-        const EXP_MASK: u128 = 0x7ff0000000000000;
-        const MAN_MASK: u128 = 0x000fffffffffffff;
-
         // SAFETY: The caller is not asking questions for which this will tell lies.
         let b = unsafe { mem::transmute::<f128, u128>(self) };
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -374,12 +379,9 @@ impl f128 {
     // plus a transmute. We do not live in a just world, but we can make it more so.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const fn classify_bits(b: u128) -> FpCategory {
-        const EXP_MASK: u128 = 0x7ff0000000000000;
-        const MAN_MASK: u128 = 0x000fffffffffffff;
-
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
-            (_, EXP_MASK) => FpCategory::Nan,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -439,7 +441,7 @@ impl f128 {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
         // SAFETY: This is just transmuting to get the sign bit, it's fine.
-        unsafe { mem::transmute::<f128, u128>(self) & 0x8000_0000_0000_0000 != 0 }
+        unsafe { mem::transmute::<f128, u128>(self) & Self::SIGN_MASK != 0 }
     }
 
     #[must_use]
@@ -482,17 +484,14 @@ impl f128 {
     pub const fn next_up(self) -> Self {
         // We must use strictly integer arithmetic to prevent denormals from
         // flushing to zero after an arithmetic operation on some platforms.
-        const TINY_BITS: u128 = 0x1; // Smallest positive f128.
-        const CLEAR_SIGN_MASK: u128 = 0x7fff_ffff_ffff_ffff;
-
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & Self::CLEAR_SIGN_MASK;
         let next_bits = if abs == 0 {
-            TINY_BITS
+            Self::TINY_BITS
         } else if bits == abs {
             bits + 1
         } else {
@@ -532,17 +531,14 @@ impl f128 {
     pub const fn next_down(self) -> Self {
         // We must use strictly integer arithmetic to prevent denormals from
         // flushing to zero after an arithmetic operation on some platforms.
-        const NEG_TINY_BITS: u128 = 0x8000_0000_0000_0001; // Smallest (in magnitude) negative f128.
-        const CLEAR_SIGN_MASK: u128 = 0x7fff_ffff_ffff_ffff;
-
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & Self::CLEAR_SIGN_MASK;
         let next_bits = if abs == 0 {
-            NEG_TINY_BITS
+            Self::NEG_TINY_BITS
         } else if bits == abs {
             bits - 1
         } else {

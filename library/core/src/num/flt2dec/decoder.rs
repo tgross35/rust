@@ -64,12 +64,12 @@ impl DecodableFloat for f64 {
     }
 }
 
-#[cfg(not(bootstrap))]
-impl DecodableFloat for f128 {
-    fn min_pos_norm_value() -> Self {
-        f128::MIN_POSITIVE
-    }
-}
+// #[cfg(not(bootstrap))]
+// impl DecodableFloat for f128 {
+//     fn min_pos_norm_value() -> Self {
+//         todo!()
+//     }
+// }
 
 /// Returns a sign (true when negative) and `FullDecoded` value
 /// from given floating point number.
