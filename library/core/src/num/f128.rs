@@ -1,4 +1,4 @@
-//! Constants for the `f128` double-precision floating point type.
+//! Constants for the `f128` quadruple-precision floating point type.
 //!
 //! *[See also the `f128` primitive type][f128].*
 //!
@@ -24,81 +24,83 @@ pub mod consts {
 
     /// Archimedes' constant (π)
     #[unstable(feature = "f128", issue = "none")]
-    pub const PI: f128 = 3.14159265358979323846264338327950288_f128;
+    pub const PI: f128 = 3.14159265358979323846264338327950288419716939937510582097494_f128;
 
     /// The full circle constant (τ)
     ///
     /// Equal to 2π.
     #[unstable(feature = "f128", issue = "none")]
-    pub const TAU: f128 = 6.28318530717958647692528676655900577_f128;
+    pub const TAU: f128 = 6.28318530717958647692528676655900576839433879875021164194989_f128;
 
     /// π/2
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_PI_2: f128 = 1.57079632679489661923132169163975144_f128;
+    pub const FRAC_PI_2: f128 = 1.57079632679489661923132169163975144209858469968755291048747_f128;
 
     /// π/3
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_PI_3: f128 = 1.04719755119659774615421446109316763_f128;
+    pub const FRAC_PI_3: f128 = 1.04719755119659774615421446109316762806572313312503527365831_f128;
 
     /// π/4
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_PI_4: f128 = 0.785398163397448309615660845819875721_f128;
+    pub const FRAC_PI_4: f128 = 0.785398163397448309615660845819875721049292349843776455243736_f128;
 
     /// π/6
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_PI_6: f128 = 0.52359877559829887307710723054658381_f128;
+    pub const FRAC_PI_6: f128 = 0.523598775598298873077107230546583814032861566562517636829157_f128;
 
     /// π/8
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_PI_8: f128 = 0.39269908169872415480783042290993786_f128;
+    pub const FRAC_PI_8: f128 = 0.392699081698724154807830422909937860524646174921888227621868_f128;
 
     /// 1/π
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_1_PI: f128 = 0.318309886183790671537767526745028724_f128;
+    pub const FRAC_1_PI: f128 = 0.318309886183790671537767526745028724068919291480912897495335_f128;
 
     /// 2/π
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_2_PI: f128 = 0.636619772367581343075535053490057448_f128;
+    pub const FRAC_2_PI: f128 = 0.636619772367581343075535053490057448137838582961825794990669_f128;
 
     /// 2/sqrt(π)
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_2_SQRT_PI: f128 = 1.12837916709551257389615890312154517_f128;
+    pub const FRAC_2_SQRT_PI: f128 =
+        1.12837916709551257389615890312154517168810125865799771368817_f128;
 
     /// sqrt(2)
     #[unstable(feature = "f128", issue = "none")]
-    pub const SQRT_2: f128 = 1.41421356237309504880168872420969808_f128;
+    pub const SQRT_2: f128 = 1.41421356237309504880168872420969807856967187537694807317668_f128;
 
     /// 1/sqrt(2)
     #[unstable(feature = "f128", issue = "none")]
-    pub const FRAC_1_SQRT_2: f128 = 0.707106781186547524400844362104849039_f128;
+    pub const FRAC_1_SQRT_2: f128 =
+        0.70710678118654752440084436210484903928483593768847403658834_f128;
 
     /// Euler's number (e)
     #[unstable(feature = "f128", issue = "none")]
-    pub const E: f128 = 2.71828182845904523536028747135266250_f128;
+    pub const E: f128 = 2.71828182845904523536028747135266249775724709369995957496697_f128;
 
     /// log<sub>2</sub>(10)
     #[unstable(feature = "f128", issue = "none")]
-    pub const LOG2_10: f128 = 3.32192809488736234787031942948939018_f128;
+    pub const LOG2_10: f128 = 3.32192809488736234787031942948939017586483139302458061205476_f128;
 
     /// log<sub>2</sub>(e)
     #[unstable(feature = "f128", issue = "none")]
-    pub const LOG2_E: f128 = 1.44269504088896340735992468100189214_f128;
+    pub const LOG2_E: f128 = 1.44269504088896340735992468100189213742664595415298593413545_f128;
 
     /// log<sub>10</sub>(2)
     #[unstable(feature = "f128", issue = "none")]
-    pub const LOG10_2: f128 = 0.301029995663981195213738894724493027_f128;
+    pub const LOG10_2: f128 = 0.301029995663981195213738894724493026768189881462108541310427_f128;
 
     /// log<sub>10</sub>(e)
     #[unstable(feature = "f128", issue = "none")]
-    pub const LOG10_E: f128 = 0.434294481903251827651128918916605082_f128;
+    pub const LOG10_E: f128 = 0.434294481903251827651128918916605082294397005803666566114454_f128;
 
     /// ln(2)
     #[unstable(feature = "f128", issue = "none")]
-    pub const LN_2: f128 = 0.693147180559945309417232121458176568_f128;
+    pub const LN_2: f128 = 0.69314718055994530941723212145817656807550013436025525412068_f128;
 
     /// ln(10)
     #[unstable(feature = "f128", issue = "none")]
-    pub const LN_10: f128 = 2.30258509299404568401799145468436421_f128;
+    pub const LN_10: f128 = 2.30258509299404568401799145468436420760110148862877297603333_f128;
 }
 
 // TODO: this is probably all wrong

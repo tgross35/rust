@@ -329,7 +329,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::fmaf16 => (0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::fmaf32 => (0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
             sym::fmaf64 => (0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::fmaf128 => (0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128),
+            sym::fmaf128 => {
+                (0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
+            }
             sym::fabsf16 => (0, vec![tcx.types.f16], tcx.types.f16),
             sym::fabsf32 => (0, vec![tcx.types.f32], tcx.types.f32),
             sym::fabsf64 => (0, vec![tcx.types.f64], tcx.types.f64),
