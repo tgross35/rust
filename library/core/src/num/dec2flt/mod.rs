@@ -224,7 +224,7 @@ pub fn pfe_invalid() -> ParseFloatError {
 fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
     let mut word = x.f;
     word |= (x.e as u64) << T::MANTISSA_EXPLICIT_BITS;
-    T::from_u64_bits(word)
+    T::from_u128_bits(word)
 }
 
 /// Converts a decimal string into a floating point number.

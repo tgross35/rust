@@ -26,11 +26,11 @@ fn parse_8digits(mut v: u64) -> u64 {
 }
 
 /// Parse digits until a non-digit character is found.
-fn try_parse_digits(mut s: &[u8], mut x: u64) -> (&[u8], u64) {
+fn try_parse_digits(mut s: &[u8], mut x: u128) -> (&[u8], u64) {
     // may cause overflows, to be handled later
 
     while s.len() >= 8 {
-        let num = s.read_u64();
+        let num = s.read_u128();
         if is_8digits(num) {
             x = x.wrapping_mul(1_0000_0000).wrapping_add(parse_8digits(num));
             s = &s[8..];
@@ -106,7 +106,7 @@ fn parse_partial_number(mut s: &[u8]) -> Option<(Number, usize)> {
     debug_assert!(!s.is_empty());
 
     // parse initial digits before dot
-    let mut mantissa = 0_u64;
+    let mut mantissa = 0_u128;
     let start = s;
     let tmp = try_parse_digits(s, mantissa);
     s = tmp.0;
@@ -207,7 +207,7 @@ pub(crate) fn parse_inf_nan<F: RawFloat>(s: &[u8], negative: bool) -> Option<F> 
 
     // All valid strings are either of length 8 or 3.
     if s.len() == 8 {
-        register = s.read_u64();
+        register = s.read_u128();
         len = 8;
     } else if s.len() == 3 {
         let a = s[0] as u64;

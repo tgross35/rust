@@ -1,5 +1,6 @@
 //! Decodes a floating-point value into individual parts and error ranges.
 
+use crate::convert::TryFrom;
 use crate::num::dec2flt::float::RawFloat;
 use crate::num::FpCategory;
 
@@ -84,7 +85,14 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
             // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
             // Float::integer_decode always preserves the exponent,
             // so the mantissa is scaled for subnormals.
-            FullDecoded::Finite(Decoded { mant, minus: 1, plus: 1, exp, inclusive: even })
+            // TODO: don't panic
+            FullDecoded::Finite(Decoded {
+                mant: u64::try_from(mant).unwrap(),
+                minus: 1,
+                plus: 1,
+                exp,
+                inclusive: even,
+            })
         }
         FpCategory::Normal => {
             let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();
@@ -92,7 +100,8 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
                 // neighbors: (maxmant, exp - 1) -- (minnormmant, exp) -- (minnormmant + 1, exp)
                 // where maxmant = minnormmant * 2 - 1
                 FullDecoded::Finite(Decoded {
-                    mant: mant << 2,
+                    // TODO: don't panic
+                    mant: u64::try_from(mant).unwrap() << 2,
                     minus: 1,
                     plus: 2,
                     exp: exp - 2,
@@ -101,7 +110,8 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
             } else {
                 // neighbors: (mant - 1, exp) -- (mant, exp) -- (mant + 1, exp)
                 FullDecoded::Finite(Decoded {
-                    mant: mant << 1,
+                    // TODO: don't panic
+                    mant: u64::try_from(mant).unwrap() << 1,
                     minus: 1,
                     plus: 1,
                     exp: exp - 1,

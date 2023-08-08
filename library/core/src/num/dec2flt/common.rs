@@ -3,10 +3,10 @@
 /// Helper methods to process immutable bytes.
 pub(crate) trait ByteSlice {
     /// Read 8 bytes as a 64-bit integer in little-endian order.
-    fn read_u64(&self) -> u64;
+    fn read_u128(&self) -> u128;
 
     /// Write a 64-bit integer as 8 bytes in little-endian order.
-    fn write_u64(&mut self, value: u64);
+    fn write_u128(&mut self, value: u128);
 
     /// Calculate the offset of a slice from another.
     fn offset_from(&self, other: &Self) -> isize;
@@ -19,15 +19,15 @@ pub(crate) trait ByteSlice {
 
 impl ByteSlice for [u8] {
     #[inline(always)] // inlining this is crucial to remove bound checks
-    fn read_u64(&self) -> u64 {
-        let mut tmp = [0; 8];
-        tmp.copy_from_slice(&self[..8]);
-        u64::from_le_bytes(tmp)
+    fn read_u128(&self) -> u128 {
+        let mut tmp = [0; 16];
+        tmp.copy_from_slice(&self[..16]);
+        u128::from_le_bytes(tmp)
     }
 
     #[inline(always)] // inlining this is crucial to remove bound checks
-    fn write_u64(&mut self, value: u64) {
-        self[..8].copy_from_slice(&value.to_le_bytes())
+    fn write_u128(&mut self, value: u128) {
+        self[..16].copy_from_slice(&value.to_le_bytes())
     }
 
     #[inline]

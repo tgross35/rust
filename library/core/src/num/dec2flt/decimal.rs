@@ -222,11 +222,11 @@ pub fn parse_decimal(mut s: &[u8]) -> Decimal {
             }
         }
         while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
-            let v = s.read_u64();
+            let v = s.read_u128();
             if !is_8digits(v) {
                 break;
             }
-            d.digits[d.num_digits..].write_u64(v - 0x3030_3030_3030_3030);
+            d.digits[d.num_digits..].write_u128(v - 0x3030_3030_3030_3030);
             d.num_digits += 8;
             s = &s[8..];
         }
