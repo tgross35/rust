@@ -337,7 +337,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::minnumf16 => (0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::minnumf32 => (0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
             sym::minnumf64 => (0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::minnumf128 => (0, vec![tcx.types.f128, tcx.types.f16], tcx.types.f128),
+            sym::minnumf128 => (0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
             sym::maxnumf16 => (0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
             sym::maxnumf32 => (0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
             sym::maxnumf64 => (0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),

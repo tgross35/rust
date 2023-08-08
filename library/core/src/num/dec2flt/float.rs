@@ -316,7 +316,8 @@ impl RawFloat for f128 {
         };
         // Exponent bias + mantissa shift
         exponent -= 1023 + 52;
-        (mantissa, exponent, sign)
+        // (mantissa, exponent, sign)
+        todo!()
     }
 
     fn classify(self) -> FpCategory {

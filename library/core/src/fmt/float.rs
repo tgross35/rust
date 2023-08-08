@@ -22,7 +22,7 @@ macro_rules! impl_general_format {
 }
 
 #[cfg(not(bootstrap))]
-impl_general_format! { f16 }
+impl_general_format! { f16 f128 }
 
 impl_general_format! { f32 f64 }
 

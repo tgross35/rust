@@ -1547,7 +1547,7 @@ extern "rust-intrinsic" {
     /// [`f16::powi`](../../std/primitive.f16.html#method.powi)
     #[rustc_nounwind]
     #[cfg(not(bootstrap))]
-    pub fn powif16(a: f32, x: i32) -> f32;
+    pub fn powif16(a: f16, x: i32) -> f16;
     /// Raises an `f32` to an integer power.
     ///
     /// The stabilized version of this intrinsic is
