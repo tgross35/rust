@@ -590,6 +590,7 @@ impl f16 {
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
+    /// // `f16` loses precision pretty fast
     /// assert!(abs_difference < 1e-6);
     /// ```
     #[inline]
@@ -611,8 +612,7 @@ impl f16 {
     ///
     /// let abs_difference = (angle.to_radians() - std::f16::consts::PI).abs();
     ///
-    /// assert!(abs_difference < 1e-6);
-    /// # assert!(abs_difference < 1e-6, "difference: {abs_difference}");
+    /// assert!(abs_difference < 0.01);
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -1176,8 +1176,8 @@ impl f16 {
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
-        let mut left = self.to_bits() as i64;
-        let mut right = other.to_bits() as i64;
+        let mut left = self.to_bits() as i16;
+        let mut right = other.to_bits() as i16;
 
         // In case of negatives, flip all the bits except the sign
         // to achieve a similar layout as two's complement integers
@@ -1201,8 +1201,8 @@ impl f16 {
         // the integer, so we "fill" the mask with sign bits, and then
         // convert to unsigned to push one more zero bit.
         // On positive values, the mask is all zeros, so it's a no-op.
-        left ^= (((left >> 63) as u16) >> 1) as i64;
-        right ^= (((right >> 63) as u16) >> 1) as i64;
+        left ^= (((left >> 15) as u16) >> 1) as i16;
+        right ^= (((right >> 15) as u16) >> 1) as i16;
 
         left.cmp(&right)
     }

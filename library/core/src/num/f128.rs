@@ -103,7 +103,6 @@ pub mod consts {
     pub const LN_10: f128 = 2.30258509299404568401799145468436420760110148862877297603333_f128;
 }
 
-// TODO: this is probably all wrong
 #[cfg(not(test))]
 impl f128 {
     /// The radix or base of the internal representation of `f128`.
@@ -1196,8 +1195,8 @@ impl f128 {
     #[must_use]
     #[unstable(feature = "f128", issue = "none")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
-        let mut left = self.to_bits() as i64;
-        let mut right = other.to_bits() as i64;
+        let mut left = self.to_bits() as i128;
+        let mut right = other.to_bits() as i128;
 
         // In case of negatives, flip all the bits except the sign
         // to achieve a similar layout as two's complement integers
@@ -1221,8 +1220,8 @@ impl f128 {
         // the integer, so we "fill" the mask with sign bits, and then
         // convert to unsigned to push one more zero bit.
         // On positive values, the mask is all zeros, so it's a no-op.
-        left ^= (((left >> 63) as u128) >> 1) as i64;
-        right ^= (((right >> 63) as u128) >> 1) as i64;
+        left ^= (((left >> 127) as u128) >> 1) as i128;
+        right ^= (((right >> 127) as u128) >> 1) as i128;
 
         left.cmp(&right)
     }

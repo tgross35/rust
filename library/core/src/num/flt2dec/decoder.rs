@@ -67,7 +67,7 @@ impl DecodableFloat for f64 {
 // #[cfg(not(bootstrap))]
 // impl DecodableFloat for f128 {
 //     fn min_pos_norm_value() -> Self {
-//         todo!()
+//         f128::MIN_POSITIVE
 //     }
 // }
 

@@ -103,7 +103,7 @@ fn get_simple_intrinsic<'ll>(
         sym::rintf16 => "llvm.rint.f16",
         sym::rintf32 => "llvm.rint.f32",
         sym::rintf64 => "llvm.rint.f64",
-        sym::rintf128 => "llvm.rint.128",
+        sym::rintf128 => "llvm.rint.f128",
         sym::nearbyintf16 => "llvm.nearbyint.f16",
         sym::nearbyintf32 => "llvm.nearbyint.f32",
         sym::nearbyintf64 => "llvm.nearbyint.f64",

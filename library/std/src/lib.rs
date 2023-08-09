@@ -279,8 +279,8 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), feature(f16))]
 #![cfg_attr(not(bootstrap), feature(f128))]
+#![cfg_attr(not(bootstrap), feature(f16))]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(duration_constants)]
