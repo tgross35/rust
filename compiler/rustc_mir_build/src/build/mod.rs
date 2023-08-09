@@ -973,8 +973,8 @@ fn parse_check_f16(num: &str, f: Half) -> Option<()> {
 
     assert!(
         u128::from(rust_f.to_bits()) == f.to_bits(),
-        "apfloat::ieee::Half gave a different result for `{rust_f}`: \
-         {f}({:#x}) vs Rust's {}({:#x})",
+        "apfloat::ieee::Half gave a different result for `{num}`: \
+         {f} ({:#x}) vs Rust's {} ({:#x})",
         f.to_bits(),
         Single::from_bits(rust_f.to_bits().into()),
         rust_f.to_bits()
@@ -995,8 +995,8 @@ fn parse_check_f128(num: &str, f: Quad) -> Option<()> {
 
     assert!(
         u128::from(rust_f.to_bits()) == f.to_bits(),
-        "apfloat::ieee::Quad gave a different result for `{rust_f}`: \
-         {f}({:#x}) vs Rust's {}({:#x})",
+        "apfloat::ieee::Quad gave a different result for `{num}`: \
+         {f} ({:#x}) vs Rust's {} ({:#x})",
         f.to_bits(),
         Quad::from_bits(rust_f.to_bits().into()),
         rust_f.to_bits()
@@ -1040,8 +1040,8 @@ pub(crate) fn parse_float_into_scalar(
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Single gave a different result for `{rust_f}`: \
-                 {f}({:#x}) vs Rust's {}({:#x})",
+                "apfloat::ieee::Single gave a different result for `{num}`: \
+                 {f} ({:#x}) vs Rust's {} ({:#x})",
                 f.to_bits(),
                 Single::from_bits(rust_f.to_bits().into()),
                 rust_f.to_bits()
@@ -1061,8 +1061,8 @@ pub(crate) fn parse_float_into_scalar(
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Double gave a different result for `{rust_f}`: \
-                 {f}({:#x}) vs Rust's {}({:#x})",
+                "apfloat::ieee::Double gave a different result for `{num}`: \
+                 {f} ({:#x}) vs Rust's {} ({:#x})",
                 f.to_bits(),
                 Double::from_bits(rust_f.to_bits().into()),
                 rust_f.to_bits()
