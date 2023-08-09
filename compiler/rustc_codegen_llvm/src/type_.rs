@@ -205,7 +205,7 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         match self.type_kind(ty) {
             TypeKind::Array | TypeKind::Vector => unsafe { llvm::LLVMGetElementType(ty) },
             TypeKind::Pointer => bug!("element_type is not supported for opaque pointers"),
-            other => bug!("element_type called on unsupported type {:?}", other),
+            other => bug!("element_type called on unsupported type {other:?}"),
         }
     }
 
@@ -215,11 +215,12 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn float_width(&self, ty: &'ll Type) -> usize {
         match self.type_kind(ty) {
+            TypeKind::Half => 16,
             TypeKind::Float => 32,
             TypeKind::Double => 64,
             TypeKind::X86_FP80 => 80,
             TypeKind::FP128 | TypeKind::PPC_FP128 => 128,
-            _ => bug!("llvm_float_width called on a non-float type"),
+            other => bug!("llvm_float_width called on a non-float type {other:?}"),
         }
     }
 

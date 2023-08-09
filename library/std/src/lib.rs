@@ -279,6 +279,8 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(f16))]
+#![cfg_attr(not(bootstrap), feature(f128))]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(duration_constants)]
@@ -523,6 +525,13 @@ pub use core::usize;
 
 pub mod f32;
 pub mod f64;
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "f128", issue = "none")]
+pub mod f128;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "f16", issue = "none")]
+pub mod f16;
 
 #[macro_use]
 pub mod thread;

@@ -181,16 +181,18 @@ impl f16 {
     /// Returns `true` if this value is NaN.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let nan = f16::NAN;
     /// let f = 7.0_f16;
     ///
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
     /// ```
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_nan(self) -> bool {
         self != self
     }
@@ -211,6 +213,8 @@ impl f16 {
     /// `false` otherwise.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let f = 7.0f16;
     /// let inf = f16::INFINITY;
     /// let neg_inf = f16::NEG_INFINITY;
@@ -222,10 +226,10 @@ impl f16 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_infinite(self) -> bool {
         // Getting clever with transmutation can result in incorrect answers on some FPUs
         // FIXME: alter the Rust <-> Rust calling convention to prevent this problem.
@@ -236,6 +240,8 @@ impl f16 {
     /// Returns `true` if this number is neither infinite nor NaN.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let f = 7.0f16;
     /// let inf: f16 = f16::INFINITY;
     /// let neg_inf: f16 = f16::NEG_INFINITY;
@@ -247,10 +253,10 @@ impl f16 {
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
@@ -260,9 +266,11 @@ impl f16 {
     /// Returns `true` if the number is [subnormal].
     ///
     /// ```
-    /// let min = f16::MIN_POSITIVE; // 2.2250738585072014e-308_f16
+    /// #![feature(f16)]
+    ///
+    /// let min = f16::MIN_POSITIVE; // 6.1035156e-5_f16_f16
     /// let max = f16::MAX;
-    /// let lower_than_min = 1.0e-308_f16;
+    /// let lower_than_min = 1.0e-5_f16;
     /// let zero = 0.0_f16;
     ///
     /// assert!(!min.is_subnormal());
@@ -275,10 +283,10 @@ impl f16 {
     /// assert!(lower_than_min.is_subnormal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
     }
@@ -287,6 +295,8 @@ impl f16 {
     /// [subnormal], or NaN.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let min = f16::MIN_POSITIVE; // 2.2250738585072014e-308f16
     /// let max = f16::MAX;
     /// let lower_than_min = 1.0e-308_f16;
@@ -302,10 +312,10 @@ impl f16 {
     /// assert!(!lower_than_min.is_normal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
     }
@@ -315,6 +325,8 @@ impl f16 {
     /// predicate instead.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// use std::num::FpCategory;
     ///
     /// let num = 12.4_f16;
@@ -393,25 +405,27 @@ impl f16 {
     /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let f = 7.0_f16;
     /// let g = -7.0_f16;
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
     /// ```
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
 
+    #[inline]
     #[must_use]
+    #[doc(hidden)]
     #[unstable(feature = "f16", issue = "none")]
     #[deprecated(since = "1.0.0", note = "renamed to is_sign_positive")]
-    #[inline]
-    #[doc(hidden)]
     pub fn is_positive(self) -> bool {
         self.is_sign_positive()
     }
@@ -424,16 +438,18 @@ impl f16 {
     /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let f = 7.0_f16;
     /// let g = -7.0_f16;
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
     /// ```
+    #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    #[inline]
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
@@ -441,11 +457,11 @@ impl f16 {
         unsafe { mem::transmute::<f16, u16>(self) & Self::SIGN_MASK != 0 }
     }
 
+    #[inline]
     #[must_use]
+    #[doc(hidden)]
     #[unstable(feature = "f16", issue = "none")]
     #[deprecated(since = "1.0.0", note = "renamed to is_sign_negative")]
-    #[inline]
-    #[doc(hidden)]
     pub fn is_negative(self) -> bool {
         self.is_sign_negative()
     }
@@ -464,7 +480,9 @@ impl f16 {
     /// is finite `x == x.next_up().next_down()` also holds.
     ///
     /// ```rust
+    /// #![feature(f16)]
     /// #![feature(float_next_up_down)]
+    ///
     /// // f16::EPSILON is the difference between 1.0 and the next number up.
     /// assert_eq!(1.0f16.next_up(), 1.0 + f16::EPSILON);
     /// // But not for most numbers.
@@ -511,7 +529,9 @@ impl f16 {
     /// is finite `x == x.next_down().next_up()` also holds.
     ///
     /// ```rust
+    /// #![feature(f16)]
     /// #![feature(float_next_up_down)]
+    ///
     /// let x = 1.0f16;
     /// // Clamp value into range [0, 1).
     /// let clamped = x.clamp(0.0, 1.0f16.next_down());
@@ -547,14 +567,16 @@ impl f16 {
     /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-6);
     /// ```
-    #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
     #[inline]
+    #[unstable(feature = "f16", issue = "none")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn recip(self) -> f16 {
         1.0 / self
     }
@@ -562,16 +584,17 @@ impl f16 {
     /// Converts radians to degrees.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let angle = std::f16::consts::PI;
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-6);
     /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
     #[inline]
+    #[unstable(feature = "f16", issue = "none")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_degrees(self) -> f16 {
         // The division here is correctly rounded with respect to the true
         // value of 180/π. (This differs from f32, where a constant must be
@@ -582,16 +605,18 @@ impl f16 {
     /// Converts degrees to radians.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let angle = 180.0_f16;
     ///
     /// let abs_difference = (angle.to_radians() - std::f16::consts::PI).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-6);
+    /// # assert!(abs_difference < 1e-6, "difference: {abs_difference}");
     /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
     #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[unstable(feature = "f16", issue = "none")]
     pub fn to_radians(self) -> f16 {
         let value: f16 = consts::PI;
         self * (value / 180.0)
@@ -605,14 +630,16 @@ impl f16 {
     /// This also matches the behavior of libm’s fmax.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let x = 1.0_f16;
     /// let y = 2.0_f16;
     ///
     /// assert_eq!(x.max(y), y);
     /// ```
+    #[inline]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "f16", issue = "none")]
-    #[inline]
     pub fn max(self, other: f16) -> f16 {
         intrinsics::maxnumf16(self, other)
     }
@@ -625,14 +652,16 @@ impl f16 {
     /// This also matches the behavior of libm’s fmin.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let x = 1.0_f16;
     /// let y = 2.0_f16;
     ///
     /// assert_eq!(x.min(y), x);
     /// ```
+    #[inline]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "f16", issue = "none")]
-    #[inline]
     pub fn min(self, other: f16) -> f16 {
         intrinsics::minnumf16(self, other)
     }
@@ -643,7 +672,9 @@ impl f16 {
     /// [`f16::max`] which only returns NaN when *both* arguments are NaN.
     ///
     /// ```
+    /// #![feature(f16)]
     /// #![feature(float_minimum_maximum)]
+    ///
     /// let x = 1.0_f16;
     /// let y = 2.0_f16;
     ///
@@ -657,9 +688,9 @@ impl f16 {
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    #[inline]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
-    #[inline]
     pub fn maximum(self, other: f16) -> f16 {
         if self > other {
             self
@@ -678,7 +709,9 @@ impl f16 {
     /// [`f16::min`] which only returns NaN when *both* arguments are NaN.
     ///
     /// ```
+    /// #![feature(f16)]
     /// #![feature(float_minimum_maximum)]
+    ///
     /// let x = 1.0_f16;
     /// let y = 2.0_f16;
     ///
@@ -692,9 +725,9 @@ impl f16 {
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    #[inline]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
-    #[inline]
     pub fn minimum(self, other: f16) -> f16 {
         if self < other {
             self
@@ -715,7 +748,9 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
     /// #![feature(num_midpoint)]
+    ///
     /// assert_eq!(1f16.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f16).midpoint(8.0), 1.25);
     /// ```
@@ -747,6 +782,8 @@ impl f16 {
     /// assuming that the value is finite and fits in that type.
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let value = 4.6_f16;
     /// let rounded = unsafe { value.to_int_unchecked::<u16>() };
     /// assert_eq!(rounded, 4);
@@ -763,10 +800,9 @@ impl f16 {
     /// * Not be `NaN`
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
     #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[unstable(feature = "f16", issue = "none")]
     pub unsafe fn to_int_unchecked<Int>(self) -> Int
     where
         Self: FloatToInt<Int>,
@@ -789,15 +825,16 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// assert!((1f16).to_bits() != 1f16 as u16); // to_bits() is not casting!
-    /// assert_eq!((12.5f16).to_bits(), 0x4029000000000000);
+    /// assert_eq!((12.5f16).to_bits(), 0x4A40);
     ///
     /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[inline]
     pub const fn to_bits(self) -> u16 {
         // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
         // ...sorta.
@@ -863,13 +900,15 @@ impl f16 {
     /// # Examples
     ///
     /// ```
-    /// let v = f16::from_bits(0x4029000000000000);
+    /// #![feature(f16)]
+    ///
+    /// let v = f16::from_bits(0x4a40);
     /// assert_eq!(v, 12.5);
     /// ```
+    #[inline]
+    #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[must_use]
-    #[inline]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u16` is a plain old datatype so we can always transmute from it
@@ -936,14 +975,15 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let bytes = 12.5f16.to_be_bytes();
-    /// assert_eq!(bytes, [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    /// assert_eq!(bytes, [0x4a, 0x40]);
     /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[inline]
     pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
     }
@@ -957,14 +997,15 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let bytes = 12.5f16.to_le_bytes();
-    /// assert_eq!(bytes, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
+    /// assert_eq!(bytes, [0x40, 0x4a]);
     /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[inline]
     pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
     }
@@ -984,21 +1025,22 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let bytes = 12.5f16.to_ne_bytes();
     /// assert_eq!(
     ///     bytes,
     ///     if cfg!(target_endian = "big") {
-    ///         [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    ///         [0x4a, 0x40]
     ///     } else {
-    ///         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]
+    ///         [0x40, 0x4a]
     ///     }
     /// );
     /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
     }
@@ -1011,13 +1053,15 @@ impl f16 {
     /// # Examples
     ///
     /// ```
-    /// let value = f16::from_be_bytes([0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    /// #![feature(f16)]
+    ///
+    /// let value = f16::from_be_bytes([0x4a, 0x40]);
     /// assert_eq!(value, 12.5);
     /// ```
+    #[inline]
+    #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[must_use]
-    #[inline]
     pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
@@ -1030,13 +1074,15 @@ impl f16 {
     /// # Examples
     ///
     /// ```
-    /// let value = f16::from_le_bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
+    /// #![feature(f16)]
+    ///
+    /// let value = f16::from_le_bytes([0x40, 0x4a]);
     /// assert_eq!(value, 12.5);
     /// ```
+    #[inline]
+    #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[must_use]
-    #[inline]
     pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
@@ -1056,17 +1102,19 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let value = f16::from_ne_bytes(if cfg!(target_endian = "big") {
-    ///     [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    ///     [0x4a, 0x40]
     /// } else {
-    ///     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]
+    ///     [0x40, 0x4a]
     /// });
     /// assert_eq!(value, 12.5);
     /// ```
+    #[inline]
+    #[must_use]
     #[unstable(feature = "f16", issue = "none")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    #[must_use]
-    #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }
@@ -1103,6 +1151,8 @@ impl f16 {
     /// # Example
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// struct GoodBoy {
     ///     name: String,
     ///     weight: f16,
@@ -1118,13 +1168,13 @@ impl f16 {
     /// ];
     ///
     /// bois.sort_by(|a, b| a.weight.total_cmp(&b.weight));
-    /// # assert!(bois.into_iter().map(|b| b.weight)
+    /// # bois.into_iter().map(|b| b.weight)
     /// #     .zip([-5.0, 0.1, 10.0, 99.0, f16::INFINITY, f16::NAN].iter())
-    /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
+    /// #     .for_each(|(a, b)| assert_eq!(a.to_bits(), b.to_bits(), "{a} != {b}"))
     /// ```
-    #[unstable(feature = "f16", issue = "none")]
-    #[must_use]
     #[inline]
+    #[must_use]
+    #[unstable(feature = "f16", issue = "none")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i64;
         let mut right = other.to_bits() as i64;
@@ -1172,14 +1222,16 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// assert!((-3.0f16).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f16).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f16).clamp(-2.0, 1.0) == 1.0);
     /// assert!((f16::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "f16", issue = "none")]
     #[inline]
+    #[unstable(feature = "f16", issue = "none")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn clamp(mut self, min: f16, max: f16) -> f16 {
         assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
         if self < min {

@@ -182,11 +182,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match src.layout.ty.kind() {
             // Floating point
+            Float(FloatTy::F16) => {
+                return Ok(self.cast_from_float(src.to_scalar().to_f16()?, cast_ty).into());
+            }
             Float(FloatTy::F32) => {
                 return Ok(self.cast_from_float(src.to_scalar().to_f32()?, cast_ty).into());
             }
             Float(FloatTy::F64) => {
                 return Ok(self.cast_from_float(src.to_scalar().to_f64()?, cast_ty).into());
+            }
+            Float(FloatTy::F128) => {
+                return Ok(self.cast_from_float(src.to_scalar().to_f128()?, cast_ty).into());
             }
             _ => {
                 bug!("Can't cast 'Float' type into {:?}", cast_ty);
