@@ -990,17 +990,18 @@ fn parse_check_f16(_num: &str, _f: Half) -> Option<()> {
 }
 
 #[cfg(not(bootstrap))]
-fn parse_check_f128(num: &str, f: Quad) -> Option<()> {
-    let Ok(rust_f) = num.parse::<f128>() else { return None };
+fn parse_check_f128(_num: &str, _f: Quad) -> Option<()> {
+    // TODO: reenable this once our f128 FromStr doesn't just use f64
+    // let Ok(rust_f) = num.parse::<f128>() else { return None };
 
-    assert!(
-        u128::from(rust_f.to_bits()) == f.to_bits(),
-        "apfloat::ieee::Quad gave a different result for `{num}`: \
-         {f} ({:#x}) vs Rust's {} ({:#x})",
-        f.to_bits(),
-        Quad::from_bits(rust_f.to_bits().into()),
-        rust_f.to_bits()
-    );
+    // assert!(
+    //     u128::from(rust_f.to_bits()) == f.to_bits(),
+    //     "apfloat::ieee::Quad gave a different result for `{num}`: \
+    //      {f} ({:#x}) vs Rust's {} ({:#x})",
+    //     f.to_bits(),
+    //     Quad::from_bits(rust_f.to_bits().into()),
+    //     rust_f.to_bits()
+    // );
 
     Some(())
 }

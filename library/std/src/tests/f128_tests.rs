@@ -158,8 +158,8 @@ fn test_is_normal() {
     assert!(!zero.is_normal());
     assert!(!neg_zero.is_normal());
     assert!(1f128.is_normal());
-    assert!(1e-37f128.is_normal());
-    assert!(!1e-38f128.is_normal());
+    assert!(1e-4931_f128.is_normal());
+    assert!(!1e-4932_f128.is_normal());
 }
 
 #[test]
@@ -175,8 +175,8 @@ fn test_classify() {
     assert_eq!(zero.classify(), Fp::Zero);
     assert_eq!(neg_zero.classify(), Fp::Zero);
     assert_eq!(1f128.classify(), Fp::Normal);
-    assert_eq!(1e-37f128.classify(), Fp::Normal);
-    assert_eq!(1e-38f128.classify(), Fp::Subnormal);
+    assert_eq!(1e-4931_f128.classify(), Fp::Normal);
+    assert_eq!(1e-4932_f128.classify(), Fp::Subnormal);
 }
 
 #[test]
@@ -499,6 +499,7 @@ fn test_ln() {
     assert_approx_eq!(1.0f128.exp().ln(), 1.0);
     assert!(nan.ln().is_nan());
     assert_eq!(inf.ln(), inf);
+    dbg!(neg_inf.ln(), neg_inf.ln().to_bits());
     assert!(neg_inf.ln().is_nan());
     assert!((-2.3f128).ln().is_nan());
     assert_eq!((-0.0f128).ln(), neg_inf);
@@ -581,6 +582,7 @@ fn test_to_radians() {
     assert_eq!(0.0f128.to_radians(), 0.0);
     assert_approx_eq!(154.6f128.to_radians(), 2.698279);
     assert_approx_eq!((-332.31f128).to_radians(), -5.799903);
+    dbg!(180.0f128.to_radians().to_bits(), pi.to_bits());
     assert_eq!(180.0f128.to_radians(), pi);
     assert!(nan.to_radians().is_nan());
     assert_eq!(inf.to_radians(), inf);

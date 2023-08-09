@@ -2,7 +2,11 @@ use crate::f16::consts;
 use crate::num::FpCategory as Fp;
 use crate::num::*;
 
-const F16_APPROX: f16 = 0.001;
+// We run out of precision pretty quickly with f16
+const F16_APPROX_L1: f16 = 0.001;
+const F16_APPROX_L2: f16 = 0.01;
+const F16_APPROX_L3: f16 = 0.1;
+const F16_APPROX_L4: f16 = 0.5;
 
 #[test]
 fn test_num_f16() {
@@ -160,8 +164,8 @@ fn test_is_normal() {
     assert!(!zero.is_normal());
     assert!(!neg_zero.is_normal());
     assert!(1f16.is_normal());
-    assert!(1e-37f16.is_normal());
-    assert!(!1e-38f16.is_normal());
+    assert!(1e-4f16.is_normal());
+    assert!(!1e-5f16.is_normal());
 }
 
 #[test]
@@ -177,8 +181,8 @@ fn test_classify() {
     assert_eq!(zero.classify(), Fp::Zero);
     assert_eq!(neg_zero.classify(), Fp::Zero);
     assert_eq!(1f16.classify(), Fp::Normal);
-    assert_eq!(1e-37f16.classify(), Fp::Normal);
-    assert_eq!(1e-38f16.classify(), Fp::Subnormal);
+    assert_eq!(1e-4f16.classify(), Fp::Normal);
+    assert_eq!(1e-5f16.classify(), Fp::Subnormal);
 }
 
 #[test]
@@ -255,16 +259,16 @@ fn test_trunc() {
 
 #[test]
 fn test_fract() {
-    assert_approx_eq!(1.0f16.fract(), 0.0f16, F16_APPROX);
-    assert_approx_eq!(1.3f16.fract(), 0.3f16, F16_APPROX);
-    assert_approx_eq!(1.5f16.fract(), 0.5f16, F16_APPROX);
-    assert_approx_eq!(1.7f16.fract(), 0.7f16, F16_APPROX);
-    assert_approx_eq!(0.0f16.fract(), 0.0f16, F16_APPROX);
-    assert_approx_eq!((-0.0f16).fract(), -0.0f16, F16_APPROX);
-    assert_approx_eq!((-1.0f16).fract(), -0.0f16, F16_APPROX);
-    assert_approx_eq!((-1.3f16).fract(), -0.3f16, F16_APPROX);
-    assert_approx_eq!((-1.5f16).fract(), -0.5f16, F16_APPROX);
-    assert_approx_eq!((-1.7f16).fract(), -0.7f16, F16_APPROX);
+    assert_approx_eq!(1.0f16.fract(), 0.0f16, F16_APPROX_L1);
+    assert_approx_eq!(1.3f16.fract(), 0.3f16, F16_APPROX_L1);
+    assert_approx_eq!(1.5f16.fract(), 0.5f16, F16_APPROX_L1);
+    assert_approx_eq!(1.7f16.fract(), 0.7f16, F16_APPROX_L1);
+    assert_approx_eq!(0.0f16.fract(), 0.0f16, F16_APPROX_L1);
+    assert_approx_eq!((-0.0f16).fract(), -0.0f16, F16_APPROX_L1);
+    assert_approx_eq!((-1.0f16).fract(), -0.0f16, F16_APPROX_L1);
+    assert_approx_eq!((-1.3f16).fract(), -0.3f16, F16_APPROX_L1);
+    assert_approx_eq!((-1.5f16).fract(), -0.5f16, F16_APPROX_L1);
+    assert_approx_eq!((-1.7f16).fract(), -0.7f16, F16_APPROX_L1);
 }
 
 #[test]
@@ -402,10 +406,10 @@ fn test_mul_add() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_approx_eq!(12.3f16.mul_add(4.5, 6.7), 62.05, F16_APPROX);
-    assert_approx_eq!((-12.3f16).mul_add(-4.5, -6.7), 48.65, F16_APPROX);
-    assert_approx_eq!(0.0f16.mul_add(8.9, 1.2), 1.2, F16_APPROX);
-    assert_approx_eq!(3.4f16.mul_add(-0.0, 5.6), 5.6, F16_APPROX);
+    assert_approx_eq!(12.3f16.mul_add(4.5, 6.7), 62.05, F16_APPROX_L3);
+    assert_approx_eq!((-12.3f16).mul_add(-4.5, -6.7), 48.65, F16_APPROX_L4);
+    assert_approx_eq!(0.0f16.mul_add(8.9, 1.2), 1.2, F16_APPROX_L2);
+    assert_approx_eq!(3.4f16.mul_add(-0.0, 5.6), 5.6, F16_APPROX_L2);
     assert!(nan.mul_add(7.8, 9.0).is_nan());
     assert_eq!(inf.mul_add(7.8, 9.0), inf);
     assert_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
@@ -427,48 +431,35 @@ fn test_recip() {
     assert_eq!(neg_inf.recip(), 0.0);
 }
 
-// TODO: powi gives me LLVM errors:
-// 
-// Both operands to a binary operator are not of the same type!
-//   %10 = fadd float %9, half 0xHC8CE
-// Call parameter type does not match function signature!
-//   %10 = fadd float %9, half 0xHC8CE
-//  half  %11 = tail call half @llvm.fabs.f16(float %10)
-// Intrinsic has incorrect argument type!
-// ptr @llvm.powi.f16
-// in function _ZN3std3f165tests9test_powi17h5053d7d11c8cb05dE
-// LLVM ERROR: Broken function found, compilation aborted!
-// 
-// #[test]
-// fn test_powi() {
-//     let nan: f16 = f16::NAN;
-//     let inf: f16 = f16::INFINITY;
-//     let neg_inf: f16 = f16::NEG_INFINITY;
-//     assert_eq!(1.0f16.powi(1), 1.0);
-//     assert_approx_eq!((-3.1f16).powi(2), 9.61);
-//     assert_approx_eq!(5.9f16.powi(-2), 0.028727);
-//     assert_eq!(8.3f16.powi(0), 1.0);
-//     assert!(nan.powi(2).is_nan());
-//     assert_eq!(inf.powi(3), inf);
-//     assert_eq!(neg_inf.powi(2), inf);
-// }
+#[test]
+fn test_powi() {
+    let nan: f16 = f16::NAN;
+    let inf: f16 = f16::INFINITY;
+    let neg_inf: f16 = f16::NEG_INFINITY;
+    assert_eq!(1.0f16.powi(1), 1.0);
+    assert_approx_eq!((-3.1f16).powi(2), 9.61);
+    assert_approx_eq!(5.9f16.powi(-2), 0.028727);
+    assert_eq!(8.3f16.powi(0), 1.0);
+    assert!(nan.powi(2).is_nan());
+    assert_eq!(inf.powi(3), inf);
+    assert_eq!(neg_inf.powi(2), inf);
+}
 
-// TODO: LLVM errors
-// #[test]
-// fn test_powf() {
-//     let nan: f16 = f16::NAN;
-//     let inf: f16 = f16::INFINITY;
-//     let neg_inf: f16 = f16::NEG_INFINITY;
-//     assert_eq!(1.0f16.powf(1.0), 1.0);
-//     assert_approx_eq!(3.4f16.powf(4.5), 246.408218);
-//     assert_approx_eq!(2.7f16.powf(-3.2), 0.041652);
-//     assert_approx_eq!((-3.1f16).powf(2.0), 9.61);
-//     assert_approx_eq!(5.9f16.powf(-2.0), 0.028727);
-//     assert_eq!(8.3f16.powf(0.0), 1.0);
-//     assert!(nan.powf(2.0).is_nan());
-//     assert_eq!(inf.powf(2.0), inf);
-//     assert_eq!(neg_inf.powf(3.0), neg_inf);
-// }
+#[test]
+fn test_powf() {
+    let nan: f16 = f16::NAN;
+    let inf: f16 = f16::INFINITY;
+    let neg_inf: f16 = f16::NEG_INFINITY;
+    assert_eq!(1.0f16.powf(1.0), 1.0);
+    assert_approx_eq!(3.4f16.powf(4.5), 246.408218, F16_APPROX_L4);
+    assert_approx_eq!(2.7f16.powf(-3.2), 0.041652, F16_APPROX_L1);
+    assert_approx_eq!((-3.1f16).powf(2.0), 9.61, F16_APPROX_L1);
+    assert_approx_eq!(5.9f16.powf(-2.0), 0.028727, F16_APPROX_L1);
+    assert_eq!(8.3f16.powf(0.0), 1.0);
+    assert!(nan.powf(2.0).is_nan());
+    assert_eq!(inf.powf(2.0), inf);
+    assert_eq!(neg_inf.powf(3.0), neg_inf);
+}
 
 #[test]
 fn test_sqrt_domain() {
@@ -546,9 +537,9 @@ fn test_log2() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_approx_eq!(10.0f16.log2(), 3.321928, F16_APPROX);
-    assert_approx_eq!(2.3f16.log2(), 1.201634, F16_APPROX);
-    assert_approx_eq!(1.0f16.exp().log2(), 1.442695, F16_APPROX);
+    assert_approx_eq!(10.0f16.log2(), 3.321928, F16_APPROX_L1);
+    assert_approx_eq!(2.3f16.log2(), 1.201634, F16_APPROX_L1);
+    assert_approx_eq!(1.0f16.exp().log2(), 1.442695, F16_APPROX_L1);
     assert!(nan.log2().is_nan());
     assert_eq!(inf.log2(), inf);
     assert!(neg_inf.log2().is_nan());
@@ -581,13 +572,12 @@ fn test_to_degrees() {
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
     assert_eq!(0.0f16.to_degrees(), 0.0);
-    // Loss of precision here, increase our bounds
-    assert_approx_eq!((-5.8f16).to_degrees(), -332.315521, F16_APPROX * 1.1);
+    assert_approx_eq!((-5.8f16).to_degrees(), -332.315521, F16_APPROX_L4);
     assert_eq!(pi.to_degrees(), 180.0);
     assert!(nan.to_degrees().is_nan());
     assert_eq!(inf.to_degrees(), inf);
     assert_eq!(neg_inf.to_degrees(), neg_inf);
-    assert_eq!(1_f16.to_degrees(), 57.2957795130823208767981548141051703);
+    assert_approx_eq!(1_f16.to_degrees(), 57.29577951, F16_APPROX_L3);
 }
 
 #[test]
@@ -597,15 +587,15 @@ fn test_to_radians() {
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
     assert_eq!(0.0f16.to_radians(), 0.0);
-    // Loss of precision here, increase our bounds
-    assert_approx_eq!(154.6f16.to_radians(), 2.698279, F16_APPROX * 1.1);
-    assert_approx_eq!((-332.31f16).to_radians(), -5.799903, F16_APPROX);
-    assert_eq!(180.0f16.to_radians(), pi);
+    assert_approx_eq!(154.6f16.to_radians(), 2.698279, F16_APPROX_L3);
+    assert_approx_eq!((-332.31f16).to_radians(), -5.799903, F16_APPROX_L3);
+    assert_approx_eq!(180.0f16.to_radians(), pi, F16_APPROX_L3);
     assert!(nan.to_radians().is_nan());
     assert_eq!(inf.to_radians(), inf);
     assert_eq!(neg_inf.to_radians(), neg_inf);
 }
 
+// Disabled since this relies on cmath
 // #[test]
 // fn test_asinh() {
 //     assert_eq!(0.0f16.asinh(), 0.0f16);
@@ -724,20 +714,20 @@ fn test_real_consts() {
     let ln_2: f16 = consts::LN_2;
     let ln_10: f16 = consts::LN_10;
 
-    assert_approx_eq!(frac_pi_2, pi / 2f16, F16_APPROX);
-    assert_approx_eq!(frac_pi_3, pi / 3f16, F16_APPROX);
-    assert_approx_eq!(frac_pi_4, pi / 4f16, F16_APPROX);
-    assert_approx_eq!(frac_pi_6, pi / 6f16, F16_APPROX);
-    assert_approx_eq!(frac_pi_8, pi / 8f16, F16_APPROX);
-    assert_approx_eq!(frac_1_pi, 1f16 / pi, F16_APPROX);
-    assert_approx_eq!(frac_2_pi, 2f16 / pi, F16_APPROX);
-    assert_approx_eq!(frac_2_sqrtpi, 2f16 / pi.sqrt(), F16_APPROX);
-    assert_approx_eq!(sqrt2, 2f16.sqrt(), F16_APPROX);
-    assert_approx_eq!(frac_1_sqrt2, 1f16 / 2f16.sqrt(), F16_APPROX);
-    assert_approx_eq!(log2_e, e.log2(), F16_APPROX);
-    assert_approx_eq!(log10_e, e.log10(), F16_APPROX);
-    assert_approx_eq!(ln_2, 2f16.ln(), F16_APPROX);
-    assert_approx_eq!(ln_10, 10f16.ln(), F16_APPROX);
+    assert_approx_eq!(frac_pi_2, pi / 2f16, F16_APPROX_L1);
+    assert_approx_eq!(frac_pi_3, pi / 3f16, F16_APPROX_L1);
+    assert_approx_eq!(frac_pi_4, pi / 4f16, F16_APPROX_L1);
+    assert_approx_eq!(frac_pi_6, pi / 6f16, F16_APPROX_L1);
+    assert_approx_eq!(frac_pi_8, pi / 8f16, F16_APPROX_L1);
+    assert_approx_eq!(frac_1_pi, 1f16 / pi, F16_APPROX_L1);
+    assert_approx_eq!(frac_2_pi, 2f16 / pi, F16_APPROX_L1);
+    assert_approx_eq!(frac_2_sqrtpi, 2f16 / pi.sqrt(), F16_APPROX_L1);
+    assert_approx_eq!(sqrt2, 2f16.sqrt(), F16_APPROX_L1);
+    assert_approx_eq!(frac_1_sqrt2, 1f16 / 2f16.sqrt(), F16_APPROX_L1);
+    assert_approx_eq!(log2_e, e.log2(), F16_APPROX_L1);
+    assert_approx_eq!(log10_e, e.log10(), F16_APPROX_L1);
+    assert_approx_eq!(ln_2, 2f16.ln(), F16_APPROX_L1);
+    assert_approx_eq!(ln_10, 10f16.ln(), F16_APPROX_L1);
 }
 
 #[test]

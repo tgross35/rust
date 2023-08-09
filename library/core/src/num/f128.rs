@@ -127,7 +127,7 @@ impl f128 {
 
     /// Smallest finite `f128` value.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MIN: f128 = -1.18973e+4932_f128;
+    pub const MIN: f128 = 1.1897314953572317650857593266280070162e+4932_f128;
 
     /// Smallest positive normal `f128` value.
     #[unstable(feature = "f128", issue = "none")]
@@ -135,7 +135,7 @@ impl f128 {
 
     /// Largest finite `f128` value.
     #[unstable(feature = "f128", issue = "none")]
-    pub const MAX: f128 = 1.18973e+4932_f128;
+    pub const MAX: f128 = 1.1897314953572317650857593266280070162e+4932_f128;
 
     /// One greater than the minimum possible normal power of 2 exponent.
     #[unstable(feature = "f128", issue = "none")]
