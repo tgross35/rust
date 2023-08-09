@@ -82,12 +82,14 @@ cfg_if::cfg_if! {
 
 // TODO: does android have its own version of these functions?
 #[inline]
+#[cfg(not(test))]
 #[cfg(not(bootstrap))]
 pub fn log2f16(n: f16) -> f16 {
     unsafe { crate::intrinsics::log2f16(n) }
 }
 
 #[inline]
+#[cfg(not(test))]
 #[cfg(not(bootstrap))]
 pub fn log2f128(n: f128) -> f128 {
     unsafe { crate::intrinsics::log2f128(n) }
