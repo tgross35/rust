@@ -236,8 +236,8 @@ macro_rules! floating {
 floating! { f32 @ #[stable(feature = "rust1", since = "1.0.0")] }
 floating! { f64 @ #[stable(feature = "rust1", since = "1.0.0")] }
 
-// #[cfg(not(bootstrap))]
-// floating! { f16 @ #[stable(feature = "why_cant_this_be_unstable", since = "CURRENT_RUSTC_VERSION")] }
+#[cfg(not(bootstrap))]
+floating! { f16 @ #[stable(feature = "why_cant_this_be_unstable", since = "CURRENT_RUSTC_VERSION")] }
 
 // #[cfg(not(bootstrap))]
 // floating! { f128 @ #[stable(feature = "why_cant_this_be_unstable", since = "CURRENT_RUSTC_VERSION")] }
@@ -282,42 +282,42 @@ impl UpperExp for f128 {
     }
 }
 
-#[cfg(not(bootstrap))]
-#[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
-impl Debug for f16 {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        // FIXME:f16_f128: print without casting
-        let f = *self as f32;
-        float_to_general_debug(fmt, &f)
-    }
-}
+// #[cfg(not(bootstrap))]
+// #[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
+// impl Debug for f16 {
+//     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+//         // FIXME:f16_f128: print without casting
+//         let f = *self as f32;
+//         float_to_general_debug(fmt, &f)
+//     }
+// }
 
-#[cfg(not(bootstrap))]
-#[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
-impl Display for f16 {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        // FIXME:f16_f128: print without casting
-        let f = *self as f32;
-        float_to_decimal_display(fmt, &f)
-    }
-}
+// #[cfg(not(bootstrap))]
+// #[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
+// impl Display for f16 {
+//     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+//         // FIXME:f16_f128: print without casting
+//         let f = *self as f32;
+//         float_to_decimal_display(fmt, &f)
+//     }
+// }
 
-#[cfg(not(bootstrap))]
-#[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
-impl LowerExp for f16 {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        // FIXME:f16_f128: print without casting
-        let f = *self as f32;
-        float_to_exponential_common(fmt, &f, false)
-    }
-}
+// #[cfg(not(bootstrap))]
+// #[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
+// impl LowerExp for f16 {
+//     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+//         // FIXME:f16_f128: print without casting
+//         let f = *self as f32;
+//         float_to_exponential_common(fmt, &f, false)
+//     }
+// }
 
-#[cfg(not(bootstrap))]
-#[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
-impl UpperExp for f16 {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        // FIXME:f16_f128: print without casting
-        let f = *self as f32;
-        float_to_exponential_common(fmt, &f, true)
-    }
-}
+// #[cfg(not(bootstrap))]
+// #[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
+// impl UpperExp for f16 {
+//     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+//         // FIXME:f16_f128: print without casting
+//         let f = *self as f32;
+//         float_to_exponential_common(fmt, &f, true)
+//     }
+// }
