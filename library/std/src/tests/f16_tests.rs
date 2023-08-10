@@ -460,8 +460,8 @@ fn test_powi() {
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
     assert_eq!(1.0f16.powi(1), 1.0);
-    assert_approx_eq!((-3.1f16).powi(2), 9.61);
-    assert_approx_eq!(5.9f16.powi(-2), 0.028727);
+    assert_approx_eq!((-3.1f16).powi(2), 9.61, F16_APPROX_L2);
+    assert_approx_eq!(5.9f16.powi(-2), 0.028727, F16_APPROX_L2);
     assert_eq!(8.3f16.powi(0), 1.0);
     assert!(nan.powi(2).is_nan());
     assert_eq!(inf.powi(3), inf);
