@@ -8,6 +8,29 @@ const F16_APPROX_L2: f16 = 0.01;
 const F16_APPROX_L3: f16 = 0.1;
 const F16_APPROX_L4: f16 = 0.5;
 
+fn test_roundtrip_f16(input: f16, bits: u16, disp: &str) {
+    let inbits = input.to_bits();
+    assert_eq!(inbits, bits, "bits mismatch {inbits:#06x} != {bits:#06x}");
+    assert_eq!(input.to_string(), disp);
+}
+
+#[test]
+fn test_parse_display() {
+    test_roundtrip_f16(0.0, 0x0000, "0");
+    test_roundtrip_f16(f16::INFINITY, 0x7C00, "inf");
+    test_roundtrip_f16(f16::NEG_INFINITY, 0xFC00, "-inf");
+    test_roundtrip_f16(6.55e4, 0x7BFF, "65504");
+    test_roundtrip_f16(65504.0, 0x7BFF, "65504");
+    test_roundtrip_f16(-6.55e4, 0xFBFF, "-65504");
+    test_roundtrip_f16(-65504.0, 0xFBFF, "-65504");
+    test_roundtrip_f16(1.0, 0x3C00, "1");
+    test_roundtrip_f16(-1.0, 0xBC00, "-1");
+    // TODO: these are probably hitting the limits of printing via f32
+    test_roundtrip_f16(6.0e-8, 0x0001, "0.000000059604645" /* "0.00000006" */);
+    test_roundtrip_f16(0.00000006, 0x0001, "0.000000059604645" /* "0.00000006" */);
+    test_roundtrip_f16(1.001, 0x3C01, "1.0009766" /* "1.001" */);
+}
+
 #[test]
 fn test_num_f16() {
     test_num(10f16, 2f16);
