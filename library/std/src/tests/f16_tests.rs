@@ -8,6 +8,12 @@ const F16_APPROX_L2: f16 = 0.01;
 const F16_APPROX_L3: f16 = 0.1;
 const F16_APPROX_L4: f16 = 0.5;
 
+const MAX_DOWN_BITS: u16 = 0x7bfe;
+const LARGEST_SUBNORMAL_BITS: u16 = 0x03ff;
+const SMALLEST_NORMAL_BITS: u16 = 0x0400;
+const NAN_MASK1: u16 = 0x02aa;
+const NAN_MASK2: u16 = 0x0155;
+
 fn test_roundtrip_f16(input: f16, bits: u16, disp: &str) {
     let inbits = input.to_bits();
     assert_eq!(inbits, bits, "bits mismatch {inbits:#06x} != {bits:#06x}");
@@ -355,74 +361,75 @@ macro_rules! assert_f16_biteq {
     };
 }
 
-// TODO get this test enabled
 // Ignore test on x87 floating point, these platforms do not guarantee NaN
 // payloads are preserved and flush denormals to zero, failing the tests.
+#[test]
 // #[cfg(not(target_arch = "x86"))]
-// #[test]
-// fn test_next_up() {
-//     let tiny = f16::from_bits(1);
-//     let tiny_up = f16::from_bits(2);
-//     let max_down = f16::from_bits(0x7f7f_fffe);
-//     let largest_subnormal = f16::from_bits(0x007f_ffff);
-//     let smallest_normal = f16::from_bits(0x0080_0000);
-//     assert_f16_biteq!(f16::NEG_INFINITY.next_up(), f16::MIN);
-//     assert_f16_biteq!(f16::MIN.next_up(), -max_down);
-//     assert_f16_biteq!((-1.0 - f16::EPSILON).next_up(), -1.0);
-//     assert_f16_biteq!((-smallest_normal).next_up(), -largest_subnormal);
-//     assert_f16_biteq!((-tiny_up).next_up(), -tiny);
-//     assert_f16_biteq!((-tiny).next_up(), -0.0f16);
-//     assert_f16_biteq!((-0.0f16).next_up(), tiny);
-//     assert_f16_biteq!(0.0f16.next_up(), tiny);
-//     assert_f16_biteq!(tiny.next_up(), tiny_up);
-//     assert_f16_biteq!(largest_subnormal.next_up(), smallest_normal);
-//     assert_f16_biteq!(1.0f16.next_up(), 1.0 + f16::EPSILON);
-//     assert_f16_biteq!(f16::MAX.next_up(), f16::INFINITY);
-//     assert_f16_biteq!(f16::INFINITY.next_up(), f16::INFINITY);
+fn test_next_up() {
+    let tiny = f16::from_bits(1);
+    let tiny_up = f16::from_bits(2);
+    let max_down = f16::from_bits(MAX_DOWN_BITS);
+    let largest_subnormal = f16::from_bits(LARGEST_SUBNORMAL_BITS);
+    let smallest_normal = f16::from_bits(SMALLEST_NORMAL_BITS);
+    // let max_down = f16::from_bits(0x7f7f_fffe);
+    // let largest_subnormal = f16::from_bits(0x007f_ffff);
+    // let smallest_normal = f16::from_bits(0x0080_0000);
+    assert_f16_biteq!(f16::NEG_INFINITY.next_up(), f16::MIN);
+    assert_f16_biteq!(f16::MIN.next_up(), -max_down);
+    assert_f16_biteq!((-1.0 - f16::EPSILON).next_up(), -1.0);
+    assert_f16_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_f16_biteq!((-tiny_up).next_up(), -tiny);
+    assert_f16_biteq!((-tiny).next_up(), -0.0f16);
+    assert_f16_biteq!((-0.0f16).next_up(), tiny);
+    assert_f16_biteq!(0.0f16.next_up(), tiny);
+    assert_f16_biteq!(tiny.next_up(), tiny_up);
+    assert_f16_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_f16_biteq!(1.0f16.next_up(), 1.0 + f16::EPSILON);
+    assert_f16_biteq!(f16::MAX.next_up(), f16::INFINITY);
+    assert_f16_biteq!(f16::INFINITY.next_up(), f16::INFINITY);
 
-//     // Check that NaNs roundtrip.
-//     let nan0 = f16::NAN;
-//     let nan1 = f16::from_bits(f16::NAN.to_bits() ^ 0x002a_aaaa);
-//     let nan2 = f16::from_bits(f16::NAN.to_bits() ^ 0x0055_5555);
-//     assert_f16_biteq!(nan0.next_up(), nan0);
-//     assert_f16_biteq!(nan1.next_up(), nan1);
-//     assert_f16_biteq!(nan2.next_up(), nan2);
-// }
+    // Check that NaNs roundtrip.
+    let nan0 = f16::NAN;
+    let nan1 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK1);
+    let nan2 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK2);
+    assert_f16_biteq!(nan0.next_up(), nan0);
+    assert_f16_biteq!(nan1.next_up(), nan1);
+    assert_f16_biteq!(nan2.next_up(), nan2);
+}
 
-// TODO get this test enabled
 // Ignore test on x87 floating point, these platforms do not guarantee NaN
 // payloads are preserved and flush denormals to zero, failing the tests.
+#[test]
 // #[cfg(not(target_arch = "x86"))]
-// #[test]
-// fn test_next_down() {
-//     let tiny = f16::from_bits(1);
-//     let tiny_up = f16::from_bits(2);
-//     let max_down = f16::from_bits(0x7f7f_fffe);
-//     let largest_subnormal = f16::from_bits(0x007f_ffff);
-//     let smallest_normal = f16::from_bits(0x0080_0000);
-//     assert_f16_biteq!(f16::NEG_INFINITY.next_down(), f16::NEG_INFINITY);
-//     assert_f16_biteq!(f16::MIN.next_down(), f16::NEG_INFINITY);
-//     assert_f16_biteq!((-max_down).next_down(), f16::MIN);
-//     assert_f16_biteq!((-1.0f16).next_down(), -1.0 - f16::EPSILON);
-//     assert_f16_biteq!((-largest_subnormal).next_down(), -smallest_normal);
-//     assert_f16_biteq!((-tiny).next_down(), -tiny_up);
-//     assert_f16_biteq!((-0.0f16).next_down(), -tiny);
-//     assert_f16_biteq!((0.0f16).next_down(), -tiny);
-//     assert_f16_biteq!(tiny.next_down(), 0.0f16);
-//     assert_f16_biteq!(tiny_up.next_down(), tiny);
-//     assert_f16_biteq!(smallest_normal.next_down(), largest_subnormal);
-//     assert_f16_biteq!((1.0 + f16::EPSILON).next_down(), 1.0f16);
-//     assert_f16_biteq!(f16::MAX.next_down(), max_down);
-//     assert_f16_biteq!(f16::INFINITY.next_down(), f16::MAX);
+fn test_next_down() {
+    let tiny = f16::from_bits(1);
+    let tiny_up = f16::from_bits(2);
+    let max_down = f16::from_bits(MAX_DOWN_BITS);
+    let largest_subnormal = f16::from_bits(LARGEST_SUBNORMAL_BITS);
+    let smallest_normal = f16::from_bits(SMALLEST_NORMAL_BITS);
+    assert_f16_biteq!(f16::NEG_INFINITY.next_down(), f16::NEG_INFINITY);
+    assert_f16_biteq!(f16::MIN.next_down(), f16::NEG_INFINITY);
+    assert_f16_biteq!((-max_down).next_down(), f16::MIN);
+    assert_f16_biteq!((-1.0f16).next_down(), -1.0 - f16::EPSILON);
+    assert_f16_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_f16_biteq!((-tiny).next_down(), -tiny_up);
+    assert_f16_biteq!((-0.0f16).next_down(), -tiny);
+    assert_f16_biteq!((0.0f16).next_down(), -tiny);
+    assert_f16_biteq!(tiny.next_down(), 0.0f16);
+    assert_f16_biteq!(tiny_up.next_down(), tiny);
+    assert_f16_biteq!(smallest_normal.next_down(), largest_subnormal);
+    assert_f16_biteq!((1.0 + f16::EPSILON).next_down(), 1.0f16);
+    assert_f16_biteq!(f16::MAX.next_down(), max_down);
+    assert_f16_biteq!(f16::INFINITY.next_down(), f16::MAX);
 
-//     // Check that NaNs roundtrip.
-//     let nan0 = f16::NAN;
-//     let nan1 = f16::from_bits(f16::NAN.to_bits() ^ 0x002a_aaaa);
-//     let nan2 = f16::from_bits(f16::NAN.to_bits() ^ 0x0055_5555);
-//     assert_f16_biteq!(nan0.next_down(), nan0);
-//     assert_f16_biteq!(nan1.next_down(), nan1);
-//     assert_f16_biteq!(nan2.next_down(), nan2);
-// }
+    // Check that NaNs roundtrip.
+    let nan0 = f16::NAN;
+    let nan1 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK1);
+    let nan2 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK2);
+    assert_f16_biteq!(nan0.next_down(), nan0);
+    assert_f16_biteq!(nan1.next_down(), nan1);
+    assert_f16_biteq!(nan2.next_down(), nan2);
+}
 
 #[test]
 fn test_mul_add() {
@@ -618,7 +625,7 @@ fn test_to_radians() {
     assert_eq!(neg_inf.to_radians(), neg_inf);
 }
 
-// Disabled since this relies on cmath
+// FIXME: we don't have an asinh implementation
 // #[test]
 // fn test_asinh() {
 //     assert_eq!(0.0f16.asinh(), 0.0f16);
@@ -642,6 +649,7 @@ fn test_to_radians() {
 //     assert_approx_eq!(1.0f16, 1e-15f16.sinh().asinh() * 1e15f16);
 // }
 
+// FIXME: we don't have an acosh implementation
 // #[test]
 // fn test_acosh() {
 //     assert_eq!(1.0f16.acosh(), 0.0f16);
@@ -660,6 +668,7 @@ fn test_to_radians() {
 //     assert_approx_eq!(60.0f16, 60.0f16.cosh().acosh());
 // }
 
+// FIXME: we don't have an atanh implementation
 // #[test]
 // fn test_atanh() {
 //     assert_eq!(0.0f16.atanh(), 0.0f16);
@@ -684,6 +693,7 @@ fn test_to_radians() {
 //     assert_approx_eq!((-0.5f16).atanh(), -0.54930614433405484569762261846126285f16);
 // }
 
+// FIXME: we don't have a gamma implementation
 // #[test]
 // fn test_gamma() {
 //     // precision can differ between platforms
@@ -704,6 +714,7 @@ fn test_to_radians() {
 //     assert_eq!(171.71f16.gamma(), f16::INFINITY);
 // }
 
+// FIXME: we don't have a ln_gamma implementation
 // #[test]
 // fn test_ln_gamma() {
 //     assert_approx_eq!(1.0f16.ln_gamma().0, 0.0f16);
@@ -793,146 +804,145 @@ fn test_clamp_max_is_nan() {
     let _ = 1.0f16.clamp(3.0, f16::NAN);
 }
 
-// TODO: LLVM errors
-// #[test]
-// fn test_total_cmp() {
-//     use core::cmp::Ordering;
+#[test]
+fn test_total_cmp() {
+    use core::cmp::Ordering;
 
-//     fn quiet_bit_mask() -> u16 {
-//         1 << (f16::MANTISSA_DIGITS - 2)
-//     }
+    fn quiet_bit_mask() -> u16 {
+        1 << (f16::MANTISSA_DIGITS - 2)
+    }
 
-//     fn min_subnorm() -> f16 {
-//         f16::MIN_POSITIVE / f16::powf(2.0, f16::MANTISSA_DIGITS as f16 - 1.0)
-//     }
+    fn min_subnorm() -> f16 {
+        f16::MIN_POSITIVE / f16::powf(2.0, f16::MANTISSA_DIGITS as f16 - 1.0)
+    }
 
-//     fn max_subnorm() -> f16 {
-//         f16::MIN_POSITIVE - min_subnorm()
-//     }
+    fn max_subnorm() -> f16 {
+        f16::MIN_POSITIVE - min_subnorm()
+    }
 
-//     fn q_nan() -> f16 {
-//         f16::from_bits(f16::NAN.to_bits() | quiet_bit_mask())
-//     }
+    fn q_nan() -> f16 {
+        f16::from_bits(f16::NAN.to_bits() | quiet_bit_mask())
+    }
 
-//     fn s_nan() -> f16 {
-//         f16::from_bits((f16::NAN.to_bits() & !quiet_bit_mask()) + 42)
-//     }
+    fn s_nan() -> f16 {
+        f16::from_bits((f16::NAN.to_bits() & !quiet_bit_mask()) + 42)
+    }
 
-//     assert_eq!(Ordering::Equal, (-q_nan()).total_cmp(&-q_nan()));
-//     assert_eq!(Ordering::Equal, (-s_nan()).total_cmp(&-s_nan()));
-//     assert_eq!(Ordering::Equal, (-f16::INFINITY).total_cmp(&-f16::INFINITY));
-//     assert_eq!(Ordering::Equal, (-f16::MAX).total_cmp(&-f16::MAX));
-//     assert_eq!(Ordering::Equal, (-2.5_f16).total_cmp(&-2.5));
-//     assert_eq!(Ordering::Equal, (-1.0_f16).total_cmp(&-1.0));
-//     assert_eq!(Ordering::Equal, (-1.5_f16).total_cmp(&-1.5));
-//     assert_eq!(Ordering::Equal, (-0.5_f16).total_cmp(&-0.5));
-//     assert_eq!(Ordering::Equal, (-f16::MIN_POSITIVE).total_cmp(&-f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Equal, (-max_subnorm()).total_cmp(&-max_subnorm()));
-//     assert_eq!(Ordering::Equal, (-min_subnorm()).total_cmp(&-min_subnorm()));
-//     assert_eq!(Ordering::Equal, (-0.0_f16).total_cmp(&-0.0));
-//     assert_eq!(Ordering::Equal, 0.0_f16.total_cmp(&0.0));
-//     assert_eq!(Ordering::Equal, min_subnorm().total_cmp(&min_subnorm()));
-//     assert_eq!(Ordering::Equal, max_subnorm().total_cmp(&max_subnorm()));
-//     assert_eq!(Ordering::Equal, f16::MIN_POSITIVE.total_cmp(&f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Equal, 0.5_f16.total_cmp(&0.5));
-//     assert_eq!(Ordering::Equal, 1.0_f16.total_cmp(&1.0));
-//     assert_eq!(Ordering::Equal, 1.5_f16.total_cmp(&1.5));
-//     assert_eq!(Ordering::Equal, 2.5_f16.total_cmp(&2.5));
-//     assert_eq!(Ordering::Equal, f16::MAX.total_cmp(&f16::MAX));
-//     assert_eq!(Ordering::Equal, f16::INFINITY.total_cmp(&f16::INFINITY));
-//     assert_eq!(Ordering::Equal, s_nan().total_cmp(&s_nan()));
-//     assert_eq!(Ordering::Equal, q_nan().total_cmp(&q_nan()));
+    assert_eq!(Ordering::Equal, (-q_nan()).total_cmp(&-q_nan()));
+    assert_eq!(Ordering::Equal, (-s_nan()).total_cmp(&-s_nan()));
+    assert_eq!(Ordering::Equal, (-f16::INFINITY).total_cmp(&-f16::INFINITY));
+    assert_eq!(Ordering::Equal, (-f16::MAX).total_cmp(&-f16::MAX));
+    assert_eq!(Ordering::Equal, (-2.5_f16).total_cmp(&-2.5));
+    assert_eq!(Ordering::Equal, (-1.0_f16).total_cmp(&-1.0));
+    assert_eq!(Ordering::Equal, (-1.5_f16).total_cmp(&-1.5));
+    assert_eq!(Ordering::Equal, (-0.5_f16).total_cmp(&-0.5));
+    assert_eq!(Ordering::Equal, (-f16::MIN_POSITIVE).total_cmp(&-f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Equal, (-max_subnorm()).total_cmp(&-max_subnorm()));
+    assert_eq!(Ordering::Equal, (-min_subnorm()).total_cmp(&-min_subnorm()));
+    assert_eq!(Ordering::Equal, (-0.0_f16).total_cmp(&-0.0));
+    assert_eq!(Ordering::Equal, 0.0_f16.total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, min_subnorm().total_cmp(&min_subnorm()));
+    assert_eq!(Ordering::Equal, max_subnorm().total_cmp(&max_subnorm()));
+    assert_eq!(Ordering::Equal, f16::MIN_POSITIVE.total_cmp(&f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Equal, 0.5_f16.total_cmp(&0.5));
+    assert_eq!(Ordering::Equal, 1.0_f16.total_cmp(&1.0));
+    assert_eq!(Ordering::Equal, 1.5_f16.total_cmp(&1.5));
+    assert_eq!(Ordering::Equal, 2.5_f16.total_cmp(&2.5));
+    assert_eq!(Ordering::Equal, f16::MAX.total_cmp(&f16::MAX));
+    assert_eq!(Ordering::Equal, f16::INFINITY.total_cmp(&f16::INFINITY));
+    assert_eq!(Ordering::Equal, s_nan().total_cmp(&s_nan()));
+    assert_eq!(Ordering::Equal, q_nan().total_cmp(&q_nan()));
 
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-s_nan()));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::INFINITY));
-//     assert_eq!(Ordering::Less, (-f16::INFINITY).total_cmp(&-f16::MAX));
-//     assert_eq!(Ordering::Less, (-f16::MAX).total_cmp(&-2.5));
-//     assert_eq!(Ordering::Less, (-2.5_f16).total_cmp(&-1.5));
-//     assert_eq!(Ordering::Less, (-1.5_f16).total_cmp(&-1.0));
-//     assert_eq!(Ordering::Less, (-1.0_f16).total_cmp(&-0.5));
-//     assert_eq!(Ordering::Less, (-0.5_f16).total_cmp(&-f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Less, (-f16::MIN_POSITIVE).total_cmp(&-max_subnorm()));
-//     assert_eq!(Ordering::Less, (-max_subnorm()).total_cmp(&-min_subnorm()));
-//     assert_eq!(Ordering::Less, (-min_subnorm()).total_cmp(&-0.0));
-//     assert_eq!(Ordering::Less, (-0.0_f16).total_cmp(&0.0));
-//     assert_eq!(Ordering::Less, 0.0_f16.total_cmp(&min_subnorm()));
-//     assert_eq!(Ordering::Less, min_subnorm().total_cmp(&max_subnorm()));
-//     assert_eq!(Ordering::Less, max_subnorm().total_cmp(&f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Less, f16::MIN_POSITIVE.total_cmp(&0.5));
-//     assert_eq!(Ordering::Less, 0.5_f16.total_cmp(&1.0));
-//     assert_eq!(Ordering::Less, 1.0_f16.total_cmp(&1.5));
-//     assert_eq!(Ordering::Less, 1.5_f16.total_cmp(&2.5));
-//     assert_eq!(Ordering::Less, 2.5_f16.total_cmp(&f16::MAX));
-//     assert_eq!(Ordering::Less, f16::MAX.total_cmp(&f16::INFINITY));
-//     assert_eq!(Ordering::Less, f16::INFINITY.total_cmp(&s_nan()));
-//     assert_eq!(Ordering::Less, s_nan().total_cmp(&q_nan()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-s_nan()));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::INFINITY));
+    assert_eq!(Ordering::Less, (-f16::INFINITY).total_cmp(&-f16::MAX));
+    assert_eq!(Ordering::Less, (-f16::MAX).total_cmp(&-2.5));
+    assert_eq!(Ordering::Less, (-2.5_f16).total_cmp(&-1.5));
+    assert_eq!(Ordering::Less, (-1.5_f16).total_cmp(&-1.0));
+    assert_eq!(Ordering::Less, (-1.0_f16).total_cmp(&-0.5));
+    assert_eq!(Ordering::Less, (-0.5_f16).total_cmp(&-f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Less, (-f16::MIN_POSITIVE).total_cmp(&-max_subnorm()));
+    assert_eq!(Ordering::Less, (-max_subnorm()).total_cmp(&-min_subnorm()));
+    assert_eq!(Ordering::Less, (-min_subnorm()).total_cmp(&-0.0));
+    assert_eq!(Ordering::Less, (-0.0_f16).total_cmp(&0.0));
+    assert_eq!(Ordering::Less, 0.0_f16.total_cmp(&min_subnorm()));
+    assert_eq!(Ordering::Less, min_subnorm().total_cmp(&max_subnorm()));
+    assert_eq!(Ordering::Less, max_subnorm().total_cmp(&f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Less, f16::MIN_POSITIVE.total_cmp(&0.5));
+    assert_eq!(Ordering::Less, 0.5_f16.total_cmp(&1.0));
+    assert_eq!(Ordering::Less, 1.0_f16.total_cmp(&1.5));
+    assert_eq!(Ordering::Less, 1.5_f16.total_cmp(&2.5));
+    assert_eq!(Ordering::Less, 2.5_f16.total_cmp(&f16::MAX));
+    assert_eq!(Ordering::Less, f16::MAX.total_cmp(&f16::INFINITY));
+    assert_eq!(Ordering::Less, f16::INFINITY.total_cmp(&s_nan()));
+    assert_eq!(Ordering::Less, s_nan().total_cmp(&q_nan()));
 
-//     assert_eq!(Ordering::Greater, (-s_nan()).total_cmp(&-q_nan()));
-//     assert_eq!(Ordering::Greater, (-f16::INFINITY).total_cmp(&-s_nan()));
-//     assert_eq!(Ordering::Greater, (-f16::MAX).total_cmp(&-f16::INFINITY));
-//     assert_eq!(Ordering::Greater, (-2.5_f16).total_cmp(&-f16::MAX));
-//     assert_eq!(Ordering::Greater, (-1.5_f16).total_cmp(&-2.5));
-//     assert_eq!(Ordering::Greater, (-1.0_f16).total_cmp(&-1.5));
-//     assert_eq!(Ordering::Greater, (-0.5_f16).total_cmp(&-1.0));
-//     assert_eq!(Ordering::Greater, (-f16::MIN_POSITIVE).total_cmp(&-0.5));
-//     assert_eq!(Ordering::Greater, (-max_subnorm()).total_cmp(&-f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Greater, (-min_subnorm()).total_cmp(&-max_subnorm()));
-//     assert_eq!(Ordering::Greater, (-0.0_f16).total_cmp(&-min_subnorm()));
-//     assert_eq!(Ordering::Greater, 0.0_f16.total_cmp(&-0.0));
-//     assert_eq!(Ordering::Greater, min_subnorm().total_cmp(&0.0));
-//     assert_eq!(Ordering::Greater, max_subnorm().total_cmp(&min_subnorm()));
-//     assert_eq!(Ordering::Greater, f16::MIN_POSITIVE.total_cmp(&max_subnorm()));
-//     assert_eq!(Ordering::Greater, 0.5_f16.total_cmp(&f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Greater, 1.0_f16.total_cmp(&0.5));
-//     assert_eq!(Ordering::Greater, 1.5_f16.total_cmp(&1.0));
-//     assert_eq!(Ordering::Greater, 2.5_f16.total_cmp(&1.5));
-//     assert_eq!(Ordering::Greater, f16::MAX.total_cmp(&2.5));
-//     assert_eq!(Ordering::Greater, f16::INFINITY.total_cmp(&f16::MAX));
-//     assert_eq!(Ordering::Greater, s_nan().total_cmp(&f16::INFINITY));
-//     assert_eq!(Ordering::Greater, q_nan().total_cmp(&s_nan()));
+    assert_eq!(Ordering::Greater, (-s_nan()).total_cmp(&-q_nan()));
+    assert_eq!(Ordering::Greater, (-f16::INFINITY).total_cmp(&-s_nan()));
+    assert_eq!(Ordering::Greater, (-f16::MAX).total_cmp(&-f16::INFINITY));
+    assert_eq!(Ordering::Greater, (-2.5_f16).total_cmp(&-f16::MAX));
+    assert_eq!(Ordering::Greater, (-1.5_f16).total_cmp(&-2.5));
+    assert_eq!(Ordering::Greater, (-1.0_f16).total_cmp(&-1.5));
+    assert_eq!(Ordering::Greater, (-0.5_f16).total_cmp(&-1.0));
+    assert_eq!(Ordering::Greater, (-f16::MIN_POSITIVE).total_cmp(&-0.5));
+    assert_eq!(Ordering::Greater, (-max_subnorm()).total_cmp(&-f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Greater, (-min_subnorm()).total_cmp(&-max_subnorm()));
+    assert_eq!(Ordering::Greater, (-0.0_f16).total_cmp(&-min_subnorm()));
+    assert_eq!(Ordering::Greater, 0.0_f16.total_cmp(&-0.0));
+    assert_eq!(Ordering::Greater, min_subnorm().total_cmp(&0.0));
+    assert_eq!(Ordering::Greater, max_subnorm().total_cmp(&min_subnorm()));
+    assert_eq!(Ordering::Greater, f16::MIN_POSITIVE.total_cmp(&max_subnorm()));
+    assert_eq!(Ordering::Greater, 0.5_f16.total_cmp(&f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Greater, 1.0_f16.total_cmp(&0.5));
+    assert_eq!(Ordering::Greater, 1.5_f16.total_cmp(&1.0));
+    assert_eq!(Ordering::Greater, 2.5_f16.total_cmp(&1.5));
+    assert_eq!(Ordering::Greater, f16::MAX.total_cmp(&2.5));
+    assert_eq!(Ordering::Greater, f16::INFINITY.total_cmp(&f16::MAX));
+    assert_eq!(Ordering::Greater, s_nan().total_cmp(&f16::INFINITY));
+    assert_eq!(Ordering::Greater, q_nan().total_cmp(&s_nan()));
 
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-s_nan()));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f16::INFINITY));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f16::MAX));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-2.5));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.5));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.0));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.5));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-max_subnorm()));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-min_subnorm()));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.0));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.0));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&min_subnorm()));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&max_subnorm()));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.5));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.0));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.5));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&2.5));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f16::MAX));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f16::INFINITY));
-//     assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&s_nan()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-s_nan()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f16::INFINITY));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f16::MAX));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-2.5));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.5));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.0));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.5));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-max_subnorm()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-min_subnorm()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.0));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.0));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&min_subnorm()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&max_subnorm()));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.5));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.0));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.5));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&2.5));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f16::MAX));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f16::INFINITY));
+    assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&s_nan()));
 
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::INFINITY));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::MAX));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-2.5));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.5));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.0));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.5));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-max_subnorm()));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-min_subnorm()));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.0));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.0));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&min_subnorm()));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&max_subnorm()));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::MIN_POSITIVE));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.5));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.0));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.5));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&2.5));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::MAX));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::INFINITY));
-//     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
-// }
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::INFINITY));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::MAX));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-2.5));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.5));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.0));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.5));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-max_subnorm()));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-min_subnorm()));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.0));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.0));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&min_subnorm()));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&max_subnorm()));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::MIN_POSITIVE));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.5));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.0));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.5));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&2.5));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::MAX));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::INFINITY));
+    assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
+}
