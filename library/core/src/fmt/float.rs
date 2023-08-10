@@ -198,30 +198,34 @@ where
 }
 
 macro_rules! floating {
-    ($ty:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
+    ($ty:ident @ #[$meta:meta]) => {
+        #[$meta]
         impl Debug for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_general_debug(fmt, self)
             }
         }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$meta]
         impl Display for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_decimal_display(fmt, self)
             }
         }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$meta]
         impl LowerExp for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_exponential_common(fmt, self, false)
             }
         }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$meta]
         impl UpperExp for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_exponential_common(fmt, self, true)
             }
@@ -229,8 +233,14 @@ macro_rules! floating {
     };
 }
 
-floating! { f32 }
-floating! { f64 }
+floating! { f32 @ #[stable(feature = "rust1", since = "1.0.0")] }
+floating! { f64 @ #[stable(feature = "rust1", since = "1.0.0")] }
+
+// #[cfg(not(bootstrap))]
+// floating! { f16 @ #[stable(feature = "why_cant_this_be_unstable", since = "CURRENT_RUSTC_VERSION")] }
+
+// #[cfg(not(bootstrap))]
+// floating! { f128 @ #[stable(feature = "why_cant_this_be_unstable", since = "CURRENT_RUSTC_VERSION")] }
 
 #[cfg(not(bootstrap))]
 #[stable(feature = "i_dont_know_why_this_cant_be_unstable", since = "CURRENT_RUSTC_VERSION")]
