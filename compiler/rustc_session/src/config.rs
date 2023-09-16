@@ -757,6 +757,7 @@ pub enum PrintKind {
     LinkArgs,
     SplitDebuginfo,
     DeploymentTarget,
+    Editions,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1722,7 +1723,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "[crate-name|file-names|sysroot|target-libdir|cfg|calling-conventions|\
              target-list|target-cpus|target-features|relocation-models|code-models|\
              tls-models|target-spec-json|all-target-specs-json|native-static-libs|\
-             stack-protector-strategies|link-args|deployment-target]",
+             stack-protector-strategies|link-args|deployment-target|editions]",
         ),
         opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
@@ -2162,6 +2163,7 @@ fn collect_print_requests(
         ("link-args", PrintKind::LinkArgs),
         ("split-debuginfo", PrintKind::SplitDebuginfo),
         ("deployment-target", PrintKind::DeploymentTarget),
+        ("editions", PrintKind::Editions),
     ];
 
     // We disallow reusing the same path in multiple prints, such as `--print

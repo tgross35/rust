@@ -872,6 +872,18 @@ fn print_crate_info(
                         .early_error("only Apple targets currently support deployment version info")
                 }
             }
+            Editions => {
+                use rustc_span::edition::{ALL_EDITIONS, DEFAULT_EDITION, LATEST_STABLE_EDITION};
+
+                for edition in ALL_EDITIONS {
+                    let default = if *edition == DEFAULT_EDITION { " default" } else { "" };
+                    let stable =
+                        if *edition == LATEST_STABLE_EDITION { " latest-stable" } else { "" };
+                    let unstable = if *edition > LATEST_STABLE_EDITION { " unstable" } else { "" };
+
+                    println_info!("{edition}:{default}{stable}{unstable}");
+                }
+            }
         }
 
         req.out.overwrite(&crate_info, sess);
