@@ -101,7 +101,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
         let mut ctxt = ctxt.normalize_to_macros_2_0();
-        let mut use_prelude = !module.no_implicit_prelude;
+        let mut use_prelude = !module.implicit_prelude;
 
         loop {
             let visit = match scope {
@@ -171,7 +171,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     ValueNS | MacroNS => break,
                 },
                 Scope::Module(module, prev_lint_id) => {
-                    use_prelude = !module.no_implicit_prelude;
+                    use_prelude = !module.implicit_prelude;
                     let derive_fallback_lint_id = match scope_set {
                         ScopeSet::Late(.., lint_id) => lint_id,
                         _ => None,

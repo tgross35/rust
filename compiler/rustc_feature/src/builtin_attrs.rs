@@ -369,7 +369,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Modules, prelude, and resolution:
     ungated!(path, Normal, template!(NameValueStr: "file"), FutureWarnFollowing),
-    ungated!(no_std, CrateLevel, template!(Word), WarnFollowing),
+    ungated!(no_std, CrateLevel, template!(Word, List: "alloc"), WarnFollowing),
     ungated!(no_implicit_prelude, Normal, template!(Word), WarnFollowing),
     ungated!(non_exhaustive, Normal, template!(Word), WarnFollowing),
 

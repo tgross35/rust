@@ -141,4 +141,8 @@ pub mod rust_2024 {
     #[unstable(feature = "prelude_2024", issue = "none")]
     #[doc(no_inline)]
     pub use core::prelude::rust_2024::*;
+
+    #[unstable(feature = "prelude_2024", issue = "none")]
+    #[doc(no_inline)]
+    pub use alloc::prelude::rust_2024::*;
 }

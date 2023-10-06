@@ -502,8 +502,8 @@ struct ModuleData<'a> {
     /// Macro invocations that can expand into items in this module.
     unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
 
-    /// Whether `#[no_implicit_prelude]` is active.
-    no_implicit_prelude: bool,
+    /// The level of prelude that is available
+    implicit_prelude: ImplicitPrelude,
 
     glob_importers: RefCell<Vec<Import<'a>>>,
     globs: RefCell<Vec<Import<'a>>>,
@@ -515,6 +515,19 @@ struct ModuleData<'a> {
     span: Span,
 
     expansion: ExpnId,
+}
+
+/// Define what level of prelude should be available
+#[derive(Debug, Clone, Copy)]
+enum ImplicitPrelude {
+    /// The `std` prelude is available. We are not `#[no_std]`
+    Std,
+    /// The `alloc` prelude is available. we are `#[no_std(alloc)]`.
+    Alloc,
+    /// The `core` prelude is active, we are `#[no_std]`.
+    Core,
+    /// `#[no_implicit_prelude]` is active.
+    None,
 }
 
 /// All modules are unique and allocated on a same arena,
@@ -541,7 +554,7 @@ impl<'a> ModuleData<'a> {
             lazy_resolutions: Default::default(),
             populate_on_access: Cell::new(is_foreign),
             unexpanded_invocations: Default::default(),
-            no_implicit_prelude,
+            implicit_prelude: no_implicit_prelude,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),

@@ -1829,7 +1829,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         // We can see through blocks
                     } else {
                         // Items from the prelude
-                        if !module.no_implicit_prelude {
+                        if !module.implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r

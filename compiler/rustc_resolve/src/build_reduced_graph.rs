@@ -130,7 +130,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     expn_id,
                     self.def_span(def_id),
                     // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                    parent.is_some_and(|module| module.no_implicit_prelude),
+                    parent.is_some_and(|module| module.implicit_prelude),
                 ));
             }
         }
@@ -669,7 +669,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     ModuleKind::Def(DefKind::Mod, def_id, ident.name),
                     expansion.to_expn_id(),
                     item.span,
-                    parent.no_implicit_prelude
+                    parent.implicit_prelude
                         || attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
@@ -708,7 +708,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     ModuleKind::Def(DefKind::Enum, def_id, ident.name),
                     expansion.to_expn_id(),
                     item.span,
-                    parent.no_implicit_prelude,
+                    parent.implicit_prelude,
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
@@ -786,7 +786,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     ModuleKind::Def(DefKind::Trait, def_id, ident.name),
                     expansion.to_expn_id(),
                     item.span,
-                    parent.no_implicit_prelude,
+                    parent.implicit_prelude,
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
@@ -918,7 +918,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 ModuleKind::Block,
                 expansion.to_expn_id(),
                 block.span,
-                parent.no_implicit_prelude,
+                parent.implicit_prelude,
             );
             self.r.block_map.insert(block.id, module);
             self.parent_scope.module = module; // Descend into the block.
