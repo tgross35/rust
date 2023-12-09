@@ -11,6 +11,9 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 
+#[cfg(not(bootstrap))]
+use core::fmt::template;
+
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
@@ -349,6 +352,7 @@ fn make_format_spec<'hir>(
     ctx.expr_call_mut(sp, format_placeholder_new, args)
 }
 
+#[cfg(bootstrap)]
 fn expand_format_args<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     macsp: Span,
@@ -383,7 +387,260 @@ fn expand_format_args<'hir>(
                 }
             }
         }));
+
     let lit_pieces = ctx.expr_array_ref(fmt.span, lit_pieces);
+
+    // Whether we'll use the `Arguments::new_v1_formatted` form (true),
+    // or the `Arguments::new_v1` form (false).
+    let mut use_format_options = false;
+
+    // Create a list of all _unique_ (argument, format trait) combinations.
+    // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
+    let mut argmap = FxIndexMap::default();
+    for piece in &fmt.template {
+        let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
+        if placeholder.format_options != Default::default() {
+            // Can't use basic form if there's any formatting options.
+            use_format_options = true;
+        }
+        if let Ok(index) = placeholder.argument.index {
+            if argmap
+                .insert((index, ArgumentType::Format(placeholder.format_trait)), placeholder.span)
+                .is_some()
+            {
+                // Duplicate (argument, format trait) combination,
+                // which we'll only put once in the args array.
+                use_format_options = true;
+            }
+        }
+    }
+
+    let format_options = use_format_options.then(|| {
+        // Generate:
+        //     &[format_spec_0, format_spec_1, format_spec_2]
+        let elements = ctx.arena.alloc_from_iter(fmt.template.iter().filter_map(|piece| {
+            let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
+            Some(make_format_spec(ctx, macsp, placeholder, &mut argmap))
+        }));
+        ctx.expr_array_ref(macsp, elements)
+    });
+
+    let arguments = fmt.arguments.all_args();
+
+    if allow_const && arguments.is_empty() && argmap.is_empty() {
+        // Generate:
+        //     <core::fmt::Arguments>::new_const(lit_pieces)
+        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArguments,
+            sym::new_const,
+        ));
+        let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
+        return hir::ExprKind::Call(new, new_args);
+    }
+
+    // If the args array contains exactly all the original arguments once,
+    // in order, we can use a simple array instead of a `match` construction.
+    // However, if there's a yield point in any argument except the first one,
+    // we don't do this, because an Argument cannot be kept across yield points.
+    //
+    // This is an optimization, speeding up compilation about 1-2% in some cases.
+    // See https://github.com/rust-lang/rust/pull/106770#issuecomment-1380790609
+    let use_simple_array = argmap.len() == arguments.len()
+        && argmap.iter().enumerate().all(|(i, (&(j, _), _))| i == j)
+        && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
+
+    let args = if arguments.is_empty() {
+        // Generate:
+        //    &<core::fmt::Argument>::none()
+        //
+        // Note:
+        //     `none()` just returns `[]`. We use `none()` rather than `[]` to limit the lifetime.
+        //
+        //     This makes sure that this still fails to compile, even when the argument is inlined:
+        //
+        //     ```
+        //     let f = format_args!("{}", "a");
+        //     println!("{f}"); // error E0716
+        //     ```
+        //
+        //     Cases where keeping the object around is allowed, such as `format_args!("a")`,
+        //     are handled above by the `allow_const` case.
+        let none_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArgument,
+            sym::none,
+        ));
+        let none = ctx.expr_call(macsp, none_fn, &[]);
+        ctx.expr(macsp, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, none))
+    } else if use_simple_array {
+        // Generate:
+        //     &[
+        //         <core::fmt::Argument>::new_display(&arg0),
+        //         <core::fmt::Argument>::new_lower_hex(&arg1),
+        //         <core::fmt::Argument>::new_debug(&arg2),
+        //         …
+        //     ]
+        let elements = ctx.arena.alloc_from_iter(arguments.iter().zip(argmap).map(
+            |(arg, ((_, ty), placeholder_span))| {
+                let placeholder_span =
+                    placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
+                let arg_span = match arg.kind {
+                    FormatArgumentKind::Captured(_) => placeholder_span,
+                    _ => arg.expr.span.with_ctxt(macsp.ctxt()),
+                };
+                let arg = ctx.lower_expr(&arg.expr);
+                let ref_arg = ctx.arena.alloc(ctx.expr(
+                    arg_span,
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
+                ));
+                make_argument(ctx, placeholder_span, ref_arg, ty)
+            },
+        ));
+        ctx.expr_array_ref(macsp, elements)
+    } else {
+        // Generate:
+        //     &match (&arg0, &arg1, &…) {
+        //         args => [
+        //             <core::fmt::Argument>::new_display(args.0),
+        //             <core::fmt::Argument>::new_lower_hex(args.1),
+        //             <core::fmt::Argument>::new_debug(args.0),
+        //             …
+        //         ]
+        //     }
+        let args_ident = Ident::new(sym::args, macsp);
+        let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
+        let args = ctx.arena.alloc_from_iter(argmap.iter().map(
+            |(&(arg_index, ty), &placeholder_span)| {
+                let arg = &arguments[arg_index];
+                let placeholder_span =
+                    placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
+                let arg_span = match arg.kind {
+                    FormatArgumentKind::Captured(_) => placeholder_span,
+                    _ => arg.expr.span.with_ctxt(macsp.ctxt()),
+                };
+                let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
+                let arg = ctx.arena.alloc(ctx.expr(
+                    arg_span,
+                    hir::ExprKind::Field(
+                        args_ident_expr,
+                        Ident::new(sym::integer(arg_index), macsp),
+                    ),
+                ));
+                make_argument(ctx, placeholder_span, arg, ty)
+            },
+        ));
+        let elements = ctx.arena.alloc_from_iter(arguments.iter().map(|arg| {
+            let arg_expr = ctx.lower_expr(&arg.expr);
+            ctx.expr(
+                arg.expr.span.with_ctxt(macsp.ctxt()),
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg_expr),
+            )
+        }));
+        let args_tuple = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Tup(elements)));
+        let array = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(args)));
+        let match_arms = ctx.arena.alloc_from_iter([ctx.arm(args_pat, array)]);
+        let match_expr = ctx.arena.alloc(ctx.expr_match(
+            macsp,
+            args_tuple,
+            match_arms,
+            hir::MatchSource::FormatArgs,
+        ));
+        ctx.expr(
+            macsp,
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, match_expr),
+        )
+    };
+
+    if let Some(format_options) = format_options {
+        // Generate:
+        //     <core::fmt::Arguments>::new_v1_formatted(
+        //         lit_pieces,
+        //         args,
+        //         format_options,
+        //         unsafe { ::core::fmt::UnsafeArg::new() }
+        //     )
+        let new_v1_formatted = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArguments,
+            sym::new_v1_formatted,
+        ));
+        let unsafe_arg_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatUnsafeArg,
+            sym::new,
+        ));
+        let unsafe_arg_new_call = ctx.expr_call(macsp, unsafe_arg_new, &[]);
+        let hir_id = ctx.next_id();
+        let unsafe_arg = ctx.expr_block(ctx.arena.alloc(hir::Block {
+            stmts: &[],
+            expr: Some(unsafe_arg_new_call),
+            hir_id,
+            rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
+            span: macsp,
+            targeted_by_break: false,
+        }));
+        let args = ctx.arena.alloc_from_iter([lit_pieces, args, format_options, unsafe_arg]);
+        hir::ExprKind::Call(new_v1_formatted, args)
+    } else {
+        // Generate:
+        //     <core::fmt::Arguments>::new_v1(
+        //         lit_pieces,
+        //         args,
+        //     )
+        let new_v1 = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArguments,
+            sym::new_v1,
+        ));
+        let new_args = ctx.arena.alloc_from_iter([lit_pieces, args]);
+        hir::ExprKind::Call(new_v1, new_args)
+    }
+}
+
+#[cfg(not(bootstrap))]
+fn expand_format_args<'hir>(
+    ctx: &mut LoweringContext<'_, 'hir>,
+    macsp: Span,
+    fmt: &FormatArgs,
+    allow_const: bool,
+) -> hir::ExprKind<'hir> {
+    // use rustc_data_structures::fx::FxHashMap;
+
+    let mut incomplete_lit = String::new();
+    let mut builder = TemplateBuilder::new();
+    // let mut placeholders: FxHashMap<usize, > =
+
+    for (i, piece) in fmt.template.iter().enumerate() {
+        match piece {
+            &FormatArgsPiece::Literal(s) => {
+                // Coalesce adjacent literal pieces.
+                if let Some(FormatArgsPiece::Literal(_)) = fmt.template.get(i + 1) {
+                    incomplete_lit.push_str(s.as_str());
+                } else if !incomplete_lit.is_empty() {
+                    incomplete_lit.push_str(s.as_str());
+                    builder.add_literal_piece(&incomplete_lit);
+                    // let s = Symbol::intern(&incomplete_lit);
+                    incomplete_lit.clear();
+                } else {
+                    builder.add_literal_piece(s.as_str());
+                    // Some(ctx.expr_str(fmt.span, s))
+                }
+            }
+            &FormatArgsPiece::Placeholder(p) => {
+
+                // // Inject empty string before placeholders when not already preceded by a literal piece.
+                // if i == 0 || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_)) {
+                //     Some(ctx.expr_str(fmt.span, kw::Empty))
+                // } else {
+                //     None
+                // }
+            }
+        }
+    }
+
+    // let lit_pieces = ctx.expr_array_ref(fmt.span, lit_pieces);
+    let lit_pieces = ctx.expr_array_ref(fmt.span, builder.finalize());
 
     // Whether we'll use the `Arguments::new_v1_formatted` form (true),
     // or the `Arguments::new_v1` form (false).
@@ -636,5 +893,46 @@ fn for_all_argument_indexes(template: &mut [FormatArgsPiece], mut f: impl FnMut(
         {
             f(index);
         }
+    }
+}
+
+#[cfg(not(bootstrap))]
+struct TemplateBuilder {
+    buf: Vec<u8>,
+    part_count: usize,
+}
+
+#[cfg(not(bootstrap))]
+impl TemplateBuilder {
+    fn new() -> Self {
+        Self { buf: Vec::new(), part_count: 0 }
+    }
+
+    fn finalize(mut self) -> Vec<u8> {
+        let meta = template::TemplateMeta::new(size.is_usize());
+        meta.write_with_size(self.part_count, |new| self.buf.splice(0..0, new.iter()));
+        self.buf
+    }
+
+    /// Add a literal string, no formatting
+    fn add_literal_piece(&mut self, s: &str) {
+        self.part_count += 1;
+        template::write_new_part(
+            template::PartData::Literal(s.as_bytes()),
+            None,
+            |byte| self.buf.push(byte),
+            |slice| self.buf.extend_from_slice(slice),
+        );
+    }
+
+    fn add_placeholder(&mut self, p: &FormatPlaceholder) {
+        let core_ph = template::rt::PlaceHolder {
+            position: p.position,
+            fill: 'a',
+            align: template::rt::TextAlignment::Unknown,
+            flags: 0,
+            precision: template::rt::Count::Implied,
+            width: template::rt::Count::Implied,
+        };
     }
 }

@@ -9,8 +9,12 @@ use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
+#[cfg(not(bootstrap))]
+use crate::ptr;
 use crate::result;
 use crate::str;
+#[cfg(not(bootstrap))]
+use template::Template;
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -19,6 +23,12 @@ mod float;
 mod nofloat;
 mod num;
 mod rt;
+
+// Public so we can use it in the compiler
+// TODO: is there a better way to share code?
+#[cfg(not(bootstrap))]
+#[doc(hidden)]
+pub mod template;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
@@ -246,7 +256,7 @@ impl<W: Write + ?Sized> Write for &mut W {
 pub struct Formatter<'a> {
     flags: u32,
     fill: char,
-    align: rt::Alignment,
+    align: rt::TextAlignment,
     width: Option<usize>,
     precision: Option<usize>,
 
@@ -267,7 +277,7 @@ impl<'a> Formatter<'a> {
         Formatter {
             flags: 0,
             fill: ' ',
-            align: rt::Alignment::Unknown,
+            align: rt::TextAlignment::Unknown,
             width: None,
             precision: None,
             buf,
@@ -297,19 +307,34 @@ impl<'a> Formatter<'a> {
 /// ```
 ///
 /// [`format()`]: ../../std/fmt/fn.format.html
+#[cfg(bootstrap)]
 #[lang = "format_arguments"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
-    // Format string pieces to print.
+    /// Format string pieces to print.
     pieces: &'a [&'static str],
 
-    // Placeholder specs, or `None` if all specs are default (as in "{}{}").
+    /// Placeholder specs, or `None` if all specs are default (as in "{}{}").
     fmt: Option<&'a [rt::Placeholder]>,
 
-    // Dynamic arguments for interpolation, to be interleaved with string
-    // pieces. (Every argument is preceded by a string piece.)
+    /// Dynamic arguments for interpolation, to be interleaved with string
+    /// pieces. (Every argument is preceded by a string piece.)
     args: &'a [rt::Argument<'a>],
+}
+
+#[cfg(not(bootstrap))]
+#[lang = "format_arguments"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Copy, Clone)]
+pub struct Arguments<'a> {
+    /// Thin pointer to the formatting recipe
+    template: Template<'static>,
+
+    /// Thin pointer to the arguments. Length comes from the template
+    ///
+    /// **INVARIANT**: the slice pointer itself has lifetime `'a`
+    args: *const rt::Argument<'a>,
 }
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
@@ -317,6 +342,7 @@ pub struct Arguments<'a> {
 #[unstable(feature = "fmt_internals", issue = "none")]
 impl<'a> Arguments<'a> {
     #[inline]
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     pub const fn new_const(pieces: &'a [&'static str]) -> Self {
         if pieces.len() > 1 {
@@ -325,14 +351,41 @@ impl<'a> Arguments<'a> {
         Arguments { pieces, fmt: None, args: &[] }
     }
 
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    pub const fn new_const(template_buf: &'static [u8], _unsafe_arg: rt::UnsafeArg) -> Self {
+        // SAFETY: by `UnsafeArg` we have a valid template
+        let template = unsafe { Template::new(template_buf) };
+        Self { template, args: ptr::null() }
+    }
+
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[inline]
+    #[cfg(bootstrap)]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
         if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
             panic!("invalid args");
         }
         Arguments { pieces, fmt: None, args }
+    }
+
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub fn new_v1(
+        template_buf: &'static [u8],
+        args: &'a [rt::Argument<'a>],
+        _unsafe_arg: rt::UnsafeArg,
+    ) -> Arguments<'a> {
+        // SAFETY: by `UnsafeArg` we have a valid template
+        let template = unsafe { Template::new(template_buf) };
+
+        // if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
+        //     panic!("invalid args");
+        // }
+
+        Self { template, args: args.as_ptr() }
     }
 
     /// This function is used to specify nonstandard formatting parameters.
@@ -343,6 +396,7 @@ impl<'a> Arguments<'a> {
     /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
     /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
     #[inline]
+    #[cfg(bootstrap)]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [rt::Argument<'a>],
@@ -357,6 +411,7 @@ impl<'a> Arguments<'a> {
     /// This is intended to be used for setting initial `String` capacity
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
+    #[cfg(bootstrap)]
     pub fn estimated_capacity(&self) -> usize {
         let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 
@@ -419,16 +474,26 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("").as_str(), Some(""));
     /// assert_eq!(format_args!("{:?}", std::env::current_dir()).as_str(), None);
     /// ```
+    #[inline]
+    #[must_use]
+    #[cfg(bootstrap)]
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
-    #[must_use]
-    #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
         match (self.pieces, self.args) {
             ([], []) => Some(""),
             ([s], []) => Some(s),
             _ => None,
         }
+    }
+
+    #[inline]
+    #[must_use]
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "fmt_as_str", since = "1.52.0")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
+    pub const fn as_str(&self) -> Option<&'static str> {
+        self.template.as_str()
     }
 }
 
@@ -1315,7 +1380,7 @@ impl<'a> Formatter<'a> {
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 let old_fill = crate::mem::replace(&mut self.fill, '0');
-                let old_align = crate::mem::replace(&mut self.align, rt::Alignment::Right);
+                let old_align = crate::mem::replace(&mut self.align, rt::TextAlignment::Right);
                 write_prefix(self, sign, prefix)?;
                 let post_padding = self.padding(min - width, Alignment::Right)?;
                 self.buf.write_str(buf)?;
@@ -1419,10 +1484,10 @@ impl<'a> Formatter<'a> {
         default: Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
-            rt::Alignment::Unknown => default,
-            rt::Alignment::Left => Alignment::Left,
-            rt::Alignment::Right => Alignment::Right,
-            rt::Alignment::Center => Alignment::Center,
+            rt::TextAlignment::Unknown => default,
+            rt::TextAlignment::Left => Alignment::Left,
+            rt::TextAlignment::Right => Alignment::Right,
+            rt::TextAlignment::Center => Alignment::Center,
         };
 
         let (pre_pad, post_pad) = match align {
@@ -1461,7 +1526,7 @@ impl<'a> Formatter<'a> {
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len());
                 self.fill = '0';
-                self.align = rt::Alignment::Right;
+                self.align = rt::TextAlignment::Right;
             }
 
             // remaining parts go through the ordinary padding process.
@@ -1664,10 +1729,10 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
-            rt::Alignment::Left => Some(Alignment::Left),
-            rt::Alignment::Right => Some(Alignment::Right),
-            rt::Alignment::Center => Some(Alignment::Center),
-            rt::Alignment::Unknown => None,
+            rt::TextAlignment::Left => Some(Alignment::Left),
+            rt::TextAlignment::Right => Some(Alignment::Right),
+            rt::TextAlignment::Center => Some(Alignment::Center),
+            rt::TextAlignment::Unknown => None,
         }
     }
 

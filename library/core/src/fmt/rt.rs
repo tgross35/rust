@@ -10,7 +10,7 @@ use super::*;
 pub struct Placeholder {
     pub position: usize,
     pub fill: char,
-    pub align: Alignment,
+    pub align: TextAlignment,
     pub flags: u32,
     pub precision: Count,
     pub width: Count,
@@ -21,7 +21,7 @@ impl Placeholder {
     pub const fn new(
         position: usize,
         fill: char,
-        align: Alignment,
+        align: TextAlignment,
         flags: u32,
         precision: Count,
         width: Count,
@@ -32,7 +32,7 @@ impl Placeholder {
 
 #[lang = "format_alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Alignment {
+pub enum TextAlignment {
     Left,
     Right,
     Center,
