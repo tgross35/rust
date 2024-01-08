@@ -1236,6 +1236,7 @@ impl ThreadId {
 struct Inner {
     name: Option<CString>, // Guaranteed to be UTF-8
     id: ThreadId,
+    os_id: usize,
     parker: Parker,
 }
 
@@ -1344,6 +1345,23 @@ impl Thread {
     #[must_use]
     pub fn id(&self) -> ThreadId {
         self.inner.id
+    }
+
+    /// Return the ID of this thread as seen by the operating system.
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let other_thread = thread::spawn(|| {
+    ///     thread::current().id()
+    /// });
+    ///
+    /// let other_thread_id = other_thread.join().unwrap();
+    /// assert!(thread::current().id() != other_thread_id);
+    /// ```
+    #[unstable(feature = "os_thread_id", issue = "none")]
+    pub fn os_id(&self) -> usize {
+        self.inner.os_id
     }
 
     /// Gets the thread's name.
