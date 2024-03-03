@@ -3,7 +3,7 @@ use std::fmt;
 use either::{Either, Left, Right};
 
 use rustc_apfloat::{
-    ieee::{Double, Single},
+    ieee::{Double, Half, Quad, Single},
     Float,
 };
 use rustc_macros::HashStable;
@@ -202,12 +202,22 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn from_f16(f: Half) -> Self {
+        Scalar::Int(f.into())
+    }
+
+    #[inline]
     pub fn from_f32(f: Single) -> Self {
         Scalar::Int(f.into())
     }
 
     #[inline]
     pub fn from_f64(f: Double) -> Self {
+        Scalar::Int(f.into())
+    }
+
+    #[inline]
+    pub fn from_f128(f: Quad) -> Self {
         Scalar::Int(f.into())
     }
 
