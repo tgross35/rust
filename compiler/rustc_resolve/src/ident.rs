@@ -5,8 +5,10 @@ use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::parse::feature_err;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
+use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
@@ -421,6 +423,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // to detect potential ambiguities.
         let mut innermost_result: Option<(NameBinding<'_>, Flags)> = None;
         let mut determinacy = Determinacy::Determined;
+        let sess = self.tcx.sess;
+        let feat_f16 = self.tcx.features().f16;
+        let feat_f128 = self.tcx.features().f128;
 
         // Go through all the scopes and try to resolve the name.
         let break_result = self.visit_scopes(
@@ -598,7 +603,34 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         result
                     }
                     Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
-                        Some(binding) => Ok((*binding, Flags::empty())),
+                        Some(binding) => {
+                            match ident.name {
+                                sym::f16 => {
+                                    if !feat_f16 && !ident.span.allows_unstable(sym::f16) {
+                                        feature_err(
+                                            sess,
+                                            sym::f16,
+                                            ident.span,
+                                            "the feature `f16` is unstable",
+                                        )
+                                        .emit();
+                                    }
+                                }
+                                sym::f128 => {
+                                    if !feat_f128 && !ident.span.allows_unstable(sym::f128) {
+                                        feature_err(
+                                            sess,
+                                            sym::f128,
+                                            ident.span,
+                                            "the feature `f128` is unstable",
+                                        )
+                                        .emit();
+                                    }
+                                }
+                                _ => (),
+                            }
+                            Ok((*binding, Flags::empty()))
+                        }
                         None => Err(Determinacy::Determined),
                     },
                 };

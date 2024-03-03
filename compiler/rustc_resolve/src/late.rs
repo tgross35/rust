@@ -27,6 +27,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
+use rustc_session::parse::feature_err;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
@@ -3923,7 +3924,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     self.r.trait_map.insert(node_id, traits);
                 }
 
-                if PrimTy::from_name(path[0].ident.name).is_some() {
+                if let Some(prim) = PrimTy::from_name(path[0].ident.name) {
+                    println!("checking path at defer {path:?}");
+                    self.check_prim_gate(prim, path_span);
+
                     let mut std_path = Vec::with_capacity(1 + path.len());
 
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
@@ -4123,6 +4127,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     && PrimTy::from_name(path[0].ident.name).is_some() =>
             {
                 let prim = PrimTy::from_name(path[0].ident.name).unwrap();
+                println!("checking path at module, {:?}", path);
+                self.check_prim_gate(prim, path[0].ident.span);
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
@@ -4658,6 +4664,29 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 });
             self.r.doc_link_traits_in_scope = doc_link_traits_in_scope;
         }
+    }
+
+    /// If a primitive requires a feature, emit a diagnostic if that feature is not
+    /// enabled.
+    ///
+    /// This recreates the logic of `gate!` without a visitor's methods.
+    fn check_prim_gate(&self, prim_ty: PrimTy, span: Span) {
+        let PrimTy::Float(float_ty) = prim_ty else {
+            return;
+        };
+
+        let tcx = self.r.tcx();
+        let (sym, msg) = match float_ty {
+            FloatTy::F16 if !tcx.features().f16 => (sym::f16, "the feature `f16` is unstable"),
+            FloatTy::F128 if !tcx.features().f128 => (sym::f128, "the feature `f128` is unstable"),
+            _ => return,
+        };
+
+        if span.allows_unstable(sym) {
+            return;
+        }
+
+        feature_err(tcx.sess, sym, span, msg).emit();
     }
 }
 
