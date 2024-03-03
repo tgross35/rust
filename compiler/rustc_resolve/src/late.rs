@@ -749,7 +749,12 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
             }
             TyKind::Path(qself, path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
-                self.smart_resolve_path(ty.id, qself, path, PathSource::Type);
+                let p = self.smart_resolve_path(ty.id, qself, path, PathSource::Type);
+                if Res::PrimTy(PrimTy::Float(FloatTy::F16)) == p.base_res() {
+                    println!("checking a path 16: {path:?} qself {qself:?} p {p:?}");
+                } else if Res::PrimTy(PrimTy::Float(FloatTy::F128)) == p.base_res() {
+                    println!("checking a path 128: {path:?} qself {qself:?} p {p:?}");
+                }
 
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
@@ -3708,14 +3713,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         qself: &Option<P<QSelf>>,
         path: &Path,
         source: PathSource<'ast>,
-    ) {
+    ) -> PartialRes {
         self.smart_resolve_path_fragment(
             qself,
             &Segment::from_path(path),
             source,
             Finalize::new(id, path.span),
             RecordPartialRes::Yes,
-        );
+        )
     }
 
     #[instrument(level = "debug", skip(self))]

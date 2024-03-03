@@ -15,7 +15,7 @@ use crate::collect::HirPlaceholderCollector;
 use crate::errors::AmbiguousLifetimeBound;
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
-use rustc_ast::{FloatTy, TraitObjectSyntax};
+use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError, MultiSpan,
@@ -33,7 +33,6 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
@@ -2176,28 +2175,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 });
 
-                if let Some(e) = self.check_float_gate(
-                    prim_ty,
-                    FloatTy::F16,
-                    self.tcx().features().f16,
-                    sym::f16,
-                    path.span,
-                    "the feature `f16` is unstable",
-                ) {
-                    return e;
-                }
-
-                if let Some(e) = self.check_float_gate(
-                    prim_ty,
-                    FloatTy::F128,
-                    self.tcx().features().f128,
-                    sym::f128,
-                    path.span,
-                    "the feature `f128` is unstable",
-                ) {
-                    return e;
-                }
-
                 match prim_ty {
                     hir::PrimTy::Bool => tcx.types.bool,
                     hir::PrimTy::Char => tcx.types.char,
@@ -2826,31 +2803,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.set_tainted_by_errors(tcx.dcx().emit_err(AmbiguousLifetimeBound { span }));
         }
         Some(r)
-    }
-
-    /// If the float type is not enabled by the feature, return `Some(error)`. `None` if there are
-    /// no problems.
-    fn check_float_gate(
-        &self,
-        prim_ty: hir::PrimTy,
-        gated_ty: FloatTy,
-        feat_enabled: bool,
-        feat_sym: Symbol,
-        span: Span,
-        msg: &'static str,
-    ) -> Option<Ty<'tcx>> {
-        let hir::PrimTy::Float(float_ty) = prim_ty else {
-            return None;
-        };
-
-        if float_ty == gated_ty && !feat_enabled && !span.allows_unstable(feat_sym) {
-            let sess = self.tcx().sess;
-            let guar = feature_err(sess, sym::f16, span, msg).emit();
-            self.set_tainted_by_errors(guar);
-            Some(Ty::new_error(self.tcx(), guar))
-        } else {
-            None
-        }
     }
 }
 
