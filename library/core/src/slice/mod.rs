@@ -2051,8 +2051,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let v = [1, -2, 3, -4, 5, -6];
     ///
     /// {
@@ -2075,10 +2073,10 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, v.split_at_checked(7));
     /// ```
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
-    #[rustc_const_unstable(feature = "split_at_checked", issue = "119128")]
     #[inline]
     #[must_use]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])> {
         if mid <= self.len() {
             // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
@@ -2102,8 +2100,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     ///
     /// if let Some((left, right)) = v.split_at_mut_checked(2) {
@@ -2116,10 +2112,10 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, v.split_at_mut_checked(7));
     /// ```
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
-    #[rustc_const_unstable(feature = "split_at_checked", issue = "119128")]
     #[inline]
     #[must_use]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
         if mid <= self.len() {
             // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
