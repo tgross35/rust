@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::any::type_name;
 use std::fmt;
 use std::fs;
@@ -29,22 +31,38 @@ pub fn validate(text: &str) {
 }
 
 pub fn run_all() {
-    run_all_f::<f32>();
-    run_all_f::<f64>();
+    thread::scope(|s| {
+        run_all_f::<f32>(&s);
+        run_all_f::<f64>(&s);
+    });
+
+    // for jh in jh_32.chain(jh_64) {
+    //     jh.join();
+    // }
 }
 
-fn run_all_f<F: Float>() {
-    let v = [spawn_gen::<F, gen::subnorm::SubnormEdge<F>>()];
-
-    for th in v {
-        th.join();
-    }
+fn run_all_f<'a: 'e, 'e, F: Float>(s: &'a thread::Scope<'a, 'e>) {
+    // spawn_gen::<F, gen::subnorm::SubnormEdge<F>>(s)
+    todo!()
 }
 
-fn spawn_gen<F: Float, G: Generator<F>>() -> thread::JoinHandle<()> {
-    std::thread::spawn(|| {
-        println!("testing {} {}", type_name::<F>(), G::NAME);
-    })
+fn spawn_gen<'a: 'e, 'e, F: Float, G: Generator<F>>(scope: &'a thread::Scope<'a, 'e>) {
+    scope.spawn(|| {
+        // println!("testing {} {}", type_name::<F>(), G::NAME);
+        // let est = G::estimated_tests();
+        // let mut g = G::new();
+        // let mut executed = 0;
+
+        // let rem_increment = (est / 100).max(1);
+
+        // while let Some(s) = g.next() {
+        //     executed += 1;
+
+        //     if executed % rem_increment == 0 {
+        //         // todo: sync to runner
+        //     }
+        // }
+    });
 }
 
 /// Open a file with a reasonable name that we can dump data to
