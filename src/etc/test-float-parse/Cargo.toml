@@ -8,7 +8,11 @@ publish = false
 resolver = "1"
 
 [dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+pbr = "1.1.1"
 rand = "0.8"
+rand_chacha = "0.3"
+rayon = "1"
 
 [lib]
 name = "test_float_parse"

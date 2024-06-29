@@ -50,9 +50,12 @@ build/
 /target
 /src/bootstrap/target
 /src/tools/x/target
+/src/etc/test-float-parse/target
+/src/etc/test-float-parse/parse-float-*
 # Created by default with `src/ci/docker/run.sh`
 /obj/
 /rustc-ice*
+
 
 ## Temporary files
 *~
