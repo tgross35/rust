@@ -492,8 +492,57 @@ fn find_with_extension(
     Ok(output)
 }
 
+enum CheckArg {
+    Py,
+    PyLint,
+    PyFmt,
+    Shell,
+    ShellLint,
+    Cpp,
+    CppFmt,
+}
+
+impl CheckArg {
+    const ALL: &[&'static str] = &[
+        Self::Py.as_str(),
+        Self::PyLint.as_str(),
+        Self::PyFmt.as_str(),
+        Self::Shell.as_str(),
+        Self::ShellLint.as_str(),
+        Self::Cpp.as_str(),
+        Self::CppFmt.as_str(),
+    ];
+
+    const fn as_str(self) -> &'static str {
+        match self {
+            CheckArg::Py => "py",
+            CheckArg::PyLint => "py:lint",
+            CheckArg::PyFmt => "py:fmt",
+            CheckArg::Shell => "shell",
+            CheckArg::ShellLint => "shell:lint",
+            CheckArg::Cpp => "cpp",
+            CheckArg::CppFmt => "cpp:fmt",
+        }
+    }
+
+    fn from_str(s: &str) -> Result<Self, Error> {
+        let ret = match s {
+            x if x == Self::Py.as_str() => Self::Py,
+            x if x == Self::PyLint.as_str() => Self::PyLint,
+            x if x == Self::PyFmt.as_str() => Self::PyFmt,
+            x if x == Self::Shell.as_str() => Self::Shell,
+            x if x == Self::ShellLint.as_str() => Self::ShellLint,
+            x if x == Self::Cpp.as_str() => Self::Cpp,
+            x if x == Self::CppFmt.as_str() => Self::CppFmt,
+            _ => return Err(Error::InvalidArg(s.to_owned())),
+        };
+        Ok(ret)
+    }
+}
+
 #[derive(Debug)]
 enum Error {
+    InvalidArg(String),
     Io(io::Error),
     /// a is required to run b. c is extra info
     MissingReq(&'static str, &'static str, Option<String>),
@@ -530,6 +579,9 @@ impl fmt::Display for Error {
             Self::Generic(s) => f.write_str(s),
             Self::Io(e) => write!(f, "IO error: {e}"),
             Self::FailedCheck(s) => write!(f, "checks with external tool '{s}' failed"),
+            Self::InvalidArg(s) => {
+                write!(f, "invalid extra check {s}. Allowed: {:?}", CheckArg::ALL)
+            }
         }
     }
 }
