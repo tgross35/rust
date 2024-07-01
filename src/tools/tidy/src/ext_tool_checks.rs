@@ -64,17 +64,19 @@ fn check_impl(
 
     // Split comma-separated args up
     let lint_args = match extra_checks {
-        Some(s) => s.strip_prefix("--extra-checks=").unwrap().split(',').collect(),
-        None => vec![],
-    };
+        Some(s) => {
+            s.strip_prefix("--extra-checks=").unwrap().split(',').map(Check::from_str).collect()
+        }
+        None => Ok(vec![]),
+    }?;
 
-    let python_all = lint_args.contains(&"py");
-    let python_lint = lint_args.contains(&"py:lint") || python_all;
-    let python_fmt = lint_args.contains(&"py:fmt") || python_all;
-    let shell_all = lint_args.contains(&"shell");
-    let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
-    let cpp_all = lint_args.contains(&"cpp");
-    let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
+    let python_all = lint_args.contains(&Check::Py);
+    let python_lint = lint_args.contains(&Check::PyLint) || python_all;
+    let python_fmt = lint_args.contains(&Check::PyFmt) || python_all;
+    let shell_all = lint_args.contains(&Check::Shell);
+    let shell_lint = lint_args.contains(&Check::ShellLint) || shell_all;
+    let cpp_all = lint_args.contains(&Check::Cpp);
+    let cpp_fmt = lint_args.contains(&Check::CppFmt) || cpp_all;
 
     let mut py_path = None;
 
@@ -492,7 +494,12 @@ fn find_with_extension(
     Ok(output)
 }
 
-enum CheckArg {
+/// A check or group of checks to run
+///
+/// If adding options here, update `ALL` as well as the documentation in
+/// `bootstrap/src/core/config/flags.rs`.
+#[derive(Debug, PartialEq)]
+enum Check {
     Py,
     PyLint,
     PyFmt,
@@ -502,8 +509,8 @@ enum CheckArg {
     CppFmt,
 }
 
-impl CheckArg {
-    const ALL: &[&'static str] = &[
+impl Check {
+    const ALL: &'static [&'static str] = &[
         Self::Py.as_str(),
         Self::PyLint.as_str(),
         Self::PyFmt.as_str(),
@@ -515,13 +522,13 @@ impl CheckArg {
 
     const fn as_str(self) -> &'static str {
         match self {
-            CheckArg::Py => "py",
-            CheckArg::PyLint => "py:lint",
-            CheckArg::PyFmt => "py:fmt",
-            CheckArg::Shell => "shell",
-            CheckArg::ShellLint => "shell:lint",
-            CheckArg::Cpp => "cpp",
-            CheckArg::CppFmt => "cpp:fmt",
+            Check::Py => "py",
+            Check::PyLint => "py:lint",
+            Check::PyFmt => "py:fmt",
+            Check::Shell => "shell",
+            Check::ShellLint => "shell:lint",
+            Check::Cpp => "cpp",
+            Check::CppFmt => "cpp:fmt",
         }
     }
 
@@ -580,7 +587,7 @@ impl fmt::Display for Error {
             Self::Io(e) => write!(f, "IO error: {e}"),
             Self::FailedCheck(s) => write!(f, "checks with external tool '{s}' failed"),
             Self::InvalidArg(s) => {
-                write!(f, "invalid extra check {s}. Allowed: {:?}", CheckArg::ALL)
+                write!(f, "invalid extra check '{s}'. Allowed: {:?}", Check::ALL)
             }
         }
     }

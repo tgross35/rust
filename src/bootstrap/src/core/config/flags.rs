@@ -361,7 +361,7 @@ pub enum Subcommand {
         bless: bool,
         #[arg(long)]
         /// comma-separated list of other files types to check (accepts py, py:lint,
-        /// py:fmt, shell)
+        /// py:fmt, shell, cpp, cpp:fmt)
         extra_checks: Option<String>,
         #[arg(long)]
         /// rerun tests even if the inputs are unchanged
