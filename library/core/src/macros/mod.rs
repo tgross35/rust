@@ -1157,6 +1157,11 @@ pub(crate) mod builtin {
     /// // fn concat_idents!(new, fun, name) { } // not usable in this way!
     /// # }
     /// ```
+    #[deprecated(
+        since = "1.84.0",
+        note = "`concat_idents` is being replaced by the more powerful `${concat(...)}` \
+                (feature `macro_metavar_expr_concat`)"
+    )]
     #[unstable(
         feature = "concat_idents",
         issue = "29599",
