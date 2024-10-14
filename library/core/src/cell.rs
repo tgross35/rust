@@ -800,7 +800,7 @@ fn panic_already_borrowed(err: BorrowMutError) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
 #[cold]
-fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
+const fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
     panic!("already mutably borrowed: {:?}", err)
 }
 
@@ -821,7 +821,7 @@ type BorrowFlag = isize;
 const UNUSED: BorrowFlag = 0;
 
 #[inline(always)]
-fn is_writing(x: BorrowFlag) -> bool {
+const fn is_writing(x: BorrowFlag) -> bool {
     x < UNUSED
 }
 
@@ -986,7 +986,8 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[track_caller]
-    pub fn borrow(&self) -> Ref<'_, T> {
+    #[rustc_const_unstable(feature = "const_refcell", issue = "none")]
+    pub const fn borrow(&self) -> Ref<'_, T> {
         match self.try_borrow() {
             Ok(b) => b,
             Err(err) => panic_already_mutably_borrowed(err),
@@ -1021,7 +1022,8 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
     #[cfg_attr(feature = "debug_refcell", track_caller)]
-    pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
+    #[rustc_const_unstable(feature = "const_refcell", issue = "none")]
+    pub const fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => {
                 #[cfg(feature = "debug_refcell")]
@@ -1147,9 +1149,10 @@ impl<T: ?Sized> RefCell<T> {
     /// let ptr = c.as_ptr();
     /// ```
     #[inline]
-    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
     #[rustc_never_returns_null_ptr]
-    pub fn as_ptr(&self) -> *mut T {
+    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
+    #[rustc_const_unstable(feature = "const_refcell", issue = "none")]
+    pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
 
@@ -1182,7 +1185,8 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    pub fn get_mut(&mut self) -> &mut T {
+    #[rustc_const_unstable(feature = "const_refcell", issue = "none")]
+    pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
 
@@ -1242,7 +1246,8 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "borrow_state", since = "1.37.0")]
     #[inline]
-    pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
+    #[rustc_const_unstable(feature = "const_refcell", issue = "none")]
+    pub const unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
         if !is_writing(self.borrow.get()) {
             // SAFETY: We check that nobody is actively writing now, but it is
             // the caller's responsibility to ensure that nobody writes until
@@ -1585,10 +1590,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     {
         let (a, b) = f(&*orig);
         let borrow = orig.borrow.clone();
-        (Ref { value: NonNull::from(a), borrow }, Ref {
-            value: NonNull::from(b),
-            borrow: orig.borrow,
-        })
+        (
+            Ref { value: NonNull::from(a), borrow },
+            Ref { value: NonNull::from(b), borrow: orig.borrow },
+        )
     }
 
     /// Converts into a reference to the underlying data.
@@ -1753,11 +1758,10 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     {
         let borrow = orig.borrow.clone();
         let (a, b) = f(&mut *orig);
-        (RefMut { value: NonNull::from(a), borrow, marker: PhantomData }, RefMut {
-            value: NonNull::from(b),
-            borrow: orig.borrow,
-            marker: PhantomData,
-        })
+        (
+            RefMut { value: NonNull::from(a), borrow, marker: PhantomData },
+            RefMut { value: NonNull::from(b), borrow: orig.borrow, marker: PhantomData },
+        )
     }
 
     /// Converts into a mutable reference to the underlying data.
