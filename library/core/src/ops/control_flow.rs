@@ -145,7 +145,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
-    pub fn is_break(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_control_flow_is", issue = "none")]
+    pub const fn is_break(&self) -> bool {
         matches!(*self, ControlFlow::Break(_))
     }
 
@@ -161,7 +162,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
-    pub fn is_continue(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_control_flow_is", issue = "none")]
+    pub const fn is_continue(&self) -> bool {
         matches!(*self, ControlFlow::Continue(_))
     }
 
