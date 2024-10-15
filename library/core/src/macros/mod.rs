@@ -921,6 +921,62 @@ macro_rules! todo {
     };
 }
 
+/// Internal macro for to panic with a fixed string at comptime or a formatted string at runtime.
+///
+/// This takes a string without formatting, a template string, and named arguments to the template
+/// string in the form `name: ty = value`. (Types are needed because they are used to construct a
+/// function signature)
+///
+/// ```ignore
+/// const_panic!(
+///     "boring string",
+///     "cool string with {words} words and an {error:?}",
+///     words: usize = words, error: String = e.into_inner(),
+/// );
+/// ```
+// FIXME(const-hack): const formatting would be nicer
+macro_rules! const_panic {
+    (
+        $const_str:literal, $template:literal
+        $(, $name:ident: $ty:ty = $value:expr)*
+        $(,)?
+    ) => {{
+        #[inline]
+        #[track_caller]
+        #[allow(unused_variables)]
+        const fn ct_panic_impl($($name: $ty,)*) {
+            // Comptime panic cannot make use of formatting
+            panic!($const_str);
+        }
+
+        #[inline]
+        #[track_caller]
+        fn rt_panic_impl($($name: $ty,)*) {
+            panic!($template);
+        }
+
+        $crate::intrinsics::const_eval_select(($($value,)*), ct_panic_impl, rt_panic_impl)
+    }}
+}
+
+/// Assert a condition is true, then panic with a message that is appropriate for either
+/// compile time or runtime.
+///
+/// See `const_panic` for usage.
+#[allow(unused_macros)] // FIXME: we will have an in-tree usecase soon
+macro_rules! const_assert {
+    (
+        $condition:expr,
+        $const_str:literal, $template:literal
+        $(, $name:ident: $ty:ty = $value:expr)*
+        $(,)?
+    ) => {
+        if !$crate::intrinsics::likely(condition) {
+            const_panic!($condition, $template $(, $name: $ty = $value)*)
+        }
+    }
+}
+
 /// Definitions of built-in macros.
 ///
 /// Most of the macro properties (stability, visibility, etc.) are taken from the source code here,
