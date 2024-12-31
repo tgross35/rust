@@ -15,12 +15,11 @@ const PB_TEMPLATE_FINAL: &str =
 
 /// Create a new progress bar within a multiprogress bar.
 pub fn create_pb(
-    mp: &MultiProgress,
     total_tests: u64,
     short_name_padded: &str,
     all_bars: &mut Vec<ProgressBar>,
 ) -> ProgressBar {
-    let pb = mp.add(ProgressBar::new(total_tests));
+    let pb = ProgressBar::new(total_tests);
     let pb_style = ProgressStyle::with_template(&PB_TEMPLATE.replace("NAME", short_name_padded))
         .unwrap()
         .progress_chars("##-");

@@ -7,7 +7,7 @@ use std::cmp::min;
 use std::ops::RangeInclusive;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{OnceLock, mpsc};
+use std::sync::{Once, OnceLock, mpsc};
 use std::{fmt, time};
 
 use indicatif::{MultiProgress, ProgressBar};
@@ -208,8 +208,8 @@ impl TestInfo {
     }
 
     /// Create a progress bar for this test within a multiprogress bar.
-    fn register_pb(&mut self, mp: &MultiProgress, drop_bars: &mut Vec<ProgressBar>) {
-        self.pb = Some(ui::create_pb(mp, self.total_tests, &self.short_name_padded(), drop_bars));
+    fn register_pb(&mut self, all_bars: &mut Vec<ProgressBar>) {
+        self.pb = Some(ui::create_pb(self.total_tests, &self.short_name_padded(), all_bars));
     }
 
     /// When the test is finished, update progress bar messages and finalize.
@@ -244,24 +244,23 @@ impl Msg {
     }
 
     /// Update UI as needed for a single message received from the test runners.
-    fn handle(self, tests: &[TestInfo], mp: &MultiProgress) {
+    fn handle(self, tests: &[TestInfo]) {
         let test = self.find_test(tests);
         let pb = test.pb.as_ref().unwrap();
 
         match self.update {
             Update::Started => {
-                mp.println(format!("Testing '{}'", test.name)).unwrap();
+                pb.println(format!("Testing '{}'", test.name));
             }
             Update::Progress { executed, failures } => {
                 pb.set_message(format! {"{failures}"});
                 pb.set_position(executed);
             }
             Update::Failure { fail, input, float_res } => {
-                mp.println(format!(
+                pb.println(format!(
                     "Failure in '{}': {fail}. parsing '{input}'. Parsed as: {float_res}",
                     test.name
-                ))
-                .unwrap();
+                ));
             }
             Update::Completed(c) => {
                 test.finalize_pb(&c);
@@ -272,11 +271,10 @@ impl Msg {
                     Err(EarlyExit::MaxFailures) => "Max failures reached for",
                 };
 
-                mp.println(format!(
+                pb.println(format!(
                     "{prefix} generator '{}' in {:?}. {} tests run, {} failures",
                     test.name, c.elapsed, c.executed, c.failures
-                ))
-                .unwrap();
+                ));
                 test.completed.set(c).unwrap();
             }
         };
@@ -406,11 +404,12 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
     }
 
     // Configure progress bars
+
     let mut all_progress_bars = Vec::new();
-    let mp = MultiProgress::new();
-    mp.set_move_cursor(true);
+    // let mp = MultiProgress::new();
+    // mp.set_move_cursor(true);
     for test in tests.iter_mut() {
-        test.register_pb(&mp, &mut all_progress_bars);
+        test.register_pb(&mut all_progress_bars);
     }
 
     ui::set_panic_hook(all_progress_bars);
@@ -429,23 +428,25 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
                 }
 
                 let msg = rx.recv().unwrap();
-                msg.handle(tests, &mp);
+                msg.handle(tests);
             }
 
             // All tests completed; finish things up
-            drop(mp);
+            // drop(mp);
             assert_eq!(rx.try_recv().unwrap_err(), mpsc::TryRecvError::Empty);
         });
 
         // Don't let the thread pool be starved by huge tests. Run faster tests first in parallel,
         // then parallelize only within the rest of the tests.
-        let (huge_tests, normal_tests): (Vec<_>, Vec<_>) =
-            tests.iter().partition(|t| t.is_huge_test());
+        // let (huge_tests, normal_tests): (Vec<_>, Vec<_>) = tests.iter().partition(|t| t.is_huge_test());
 
-        // Run the actual tests
-        normal_tests.par_iter().for_each(|test| ((test.launch)(&tx, test, cfg)));
+        // Run smaller tests in parallel
+        // normal_tests.par_iter().for_each(|test| ((test.launch)(&tx, test, cfg)));
 
-        huge_tests.par_iter().for_each(|test| ((test.launch)(&tx, test, cfg)));
+        // Run large tests in series. These still have internal parallelization.
+        for test in tests.iter() {
+            ((test.launch)(&tx, test, cfg));
+        }
     });
 
     start.elapsed()
@@ -455,15 +456,19 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
 ///
 /// This calls the generator's iterator multiple times (in parallel) and validates each output.
 fn test_runner<F: Float, G: Generator<F>>(tx: &mpsc::Sender<Msg>, _info: &TestInfo, cfg: &Config) {
-    tx.send(Msg::new::<F, G>(Update::Started)).unwrap();
-
     let total = G::total_tests();
     let gen = G::new();
     let executed = AtomicU64::new(0);
     let failures = AtomicU64::new(0);
+    let init_once = Once::new();
 
     let checks_per_update = min(total, 1000);
     let started = Instant::now();
+
+    let init = || {
+        init_once.call_once(|| tx.send(Msg::new::<F, G>(Update::Started)).unwrap());
+        String::new()
+    };
 
     // Function to execute for a single test iteration.
     let check_one = |buf: &mut String, ctx: G::WriteCtx| {
@@ -499,7 +504,7 @@ fn test_runner<F: Float, G: Generator<F>>(tx: &mpsc::Sender<Msg>, _info: &TestIn
 
     // Run the test iterations in parallel. Each thread gets a string buffer to write
     // its check values to.
-    let res = gen.par_bridge().try_for_each_init(|| String::with_capacity(100), check_one);
+    let res = gen.par_bridge().try_for_each_init(init, check_one);
 
     let elapsed = started.elapsed();
     let executed = executed.into_inner();
