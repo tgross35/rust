@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies]
 core = { path = "../core" }
-compiler_builtins = { version = "=0.1.140", features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "0.1.140", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
@@ -54,3 +54,6 @@ check-cfg = [
     'cfg(no_sync)',
     'cfg(randomized_layouts)',
 ]
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", rev = "feb90fb20aca20be0968fe9450b934e50a36a41d" }

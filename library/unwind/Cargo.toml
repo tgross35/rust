@@ -38,3 +38,6 @@ system-llvm-libunwind = []
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = ['cfg(emscripten_wasm_eh)']
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", rev = "feb90fb20aca20be0968fe9450b934e50a36a41d" }

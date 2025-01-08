@@ -16,6 +16,7 @@ proc_macro = { path = "./sysroot_src/library/proc_macro" }
 rustc-std-workspace-core = { path = "./sysroot_src/library/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-alloc" }
 rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", rev = "feb90fb20aca20be0968fe9450b934e50a36a41d" }
 
 # For compiler-builtins we always use a high number of codegen units.
 # The goal here is to place every single intrinsic into its own object
