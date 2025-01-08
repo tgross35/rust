@@ -2078,9 +2078,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.limits(()).move_size_limit
     }
 
+    /// List all traits available in the local crate and its direct dependencies.
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
+        // Exclude crates that are not direct dependencies
+        let valid_extern_crates = self.crates(()).iter().copied().filter(move |cnum| {
+            self.extern_crate(*cnum).is_none_or(|ext| ext.dependency_of == LOCAL_CRATE)
+        });
+
         iter::once(LOCAL_CRATE)
-            .chain(self.crates(()).iter().copied())
+            .chain(valid_extern_crates)
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
     }
 

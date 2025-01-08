@@ -8,7 +8,7 @@ use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, STABLE_STANDARD_LIBRARY, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
@@ -76,7 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // No need to lint if method came from std/core, as that will now be in the prelude
-        if matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
+        if STABLE_STANDARD_LIBRARY.contains(&self.tcx.crate_name(pick.item.def_id.krate)) {
             return;
         }
 

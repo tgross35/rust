@@ -19,7 +19,7 @@ use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::{Symbol, sym};
+use rustc_span::{STABLE_STANDARD_LIBRARY, Symbol, sym};
 use std::{cmp, ops};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -57,10 +57,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
     };
 
     if (name.starts_with("as_") || name == "len" || name == "is_empty") && have_one_arg {
-        if matches!(
-            cx.tcx.crate_name(fn_id.krate),
-            sym::std | sym::core | sym::alloc | sym::proc_macro
-        ) {
+        if STABLE_STANDARD_LIBRARY.contains(&cx.tcx.crate_name(fn_id.krate)) {
             Eager
         } else {
             NoChange

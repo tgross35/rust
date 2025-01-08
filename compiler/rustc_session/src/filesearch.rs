@@ -195,7 +195,10 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
 /// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
 /// Panics if [`get_or_default_sysroot`]  returns an error.
 pub fn materialize_sysroot(maybe_sysroot: Option<PathBuf>) -> PathBuf {
-    maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot().expect("Failed finding sysroot"))
+    let res =
+        maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot().expect("Failed finding sysroot"));
+    tracing::info!("sysroot: {res:?}");
+    res
 }
 
 /// This function checks if sysroot is found using env::args().next(), and if it

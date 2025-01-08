@@ -315,7 +315,7 @@ impl<'a> CrateLocator<'a> {
         // (e.g., if we're a cdylib but emitting just metadata).
         let only_needs_metadata = is_rlib || !needs_object_code;
 
-        CrateLocator {
+        let ret = CrateLocator {
             only_needs_metadata,
             sysroot: &sess.sysroot,
             metadata_loader,
@@ -343,7 +343,9 @@ impl<'a> CrateLocator<'a> {
             path_kind,
             is_proc_macro: false,
             crate_rejections: CrateRejections::default(),
-        }
+        };
+        tracing::info!("cratelocator sysroot {:?} {:?}", &ret.sysroot, &ret.crate_name);
+        ret
     }
 
     pub(crate) fn reset(&mut self) {

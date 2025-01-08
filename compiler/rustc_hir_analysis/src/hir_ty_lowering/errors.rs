@@ -187,6 +187,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .collect();
 
+        tracing::info!(
+            "visible: {:#?}",
+            visible_traits.iter().map(|tr| (tr, tcx.visibility(tr))).collect::<Vec<_>>()
+        );
+
+        tracing::info!(
+            "crates: {:#?}",
+            tcx.crates(()).iter().map(|cnum| cnum.as_def_id()).collect::<Vec<_>>()
+        );
+        tracing::info!(
+            "crates: {:#?}",
+            tcx.crates(())
+                .iter()
+                .copied()
+                .map(|cnum| (cnum, cnum.as_def_id(), tcx.extern_crate(cnum)))
+                .collect::<Vec<_>>()
+        );
+
+        // tracing::info!(
+        //     "crates: {:#?}",
+        //     (cnum, cnum.as_def_id(), tcx.extern_crate(cnum))
+        // );
+
         let wider_candidate_names: Vec<_> = visible_traits
             .iter()
             .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())
