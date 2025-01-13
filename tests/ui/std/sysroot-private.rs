@@ -16,9 +16,10 @@
 trait Trait { type Bar; }
 
 // Attempt to get a suggestion for `addr2line::LookupContinuation`, which has member `Buf`
+// Note that the suggestion only happens when `rustc_private` is enabled.
 type AssociatedTy = dyn Trait<Buf = i32, Bar = i32>;
 //~^ ERROR associated type `Buf` not found
-//~| NOTE there is an associated type `Buf` in the trait `addr2line::lookup::LookupContinuation`
+//[rustc_private_enabled]~| NOTE there is an associated type `Buf` in the trait `addr2line::lookup::LookupContinuation`
 
 // Attempt to get a suggestion for `hashbrown::Equivalent`
 trait Trait2<K>: Equivalent<K> {}
