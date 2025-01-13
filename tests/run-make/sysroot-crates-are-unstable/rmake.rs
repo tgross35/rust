@@ -1,20 +1,40 @@
 // Check that crates in the sysroot are treated as unstable, unless they are
 // on a list of known-stable sysroot crates.
 
+mod rmake_diagnostics;
+
 use std::path::{Path, PathBuf};
 use std::str;
+use std::sync::LazyLock;
 
 use run_make_support::{rfs, rustc, target};
 
-fn is_stable_crate(name: &str) -> bool {
-    matches!(name, "std" | "alloc" | "core" | "proc_macro")
-}
+/// The real sysroot for this test.
+static SYSROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    let sysroot = PathBuf::from(rustc().print("sysroot").run().stdout_utf8().trim());
+    println!("Sysroot libs dir: {sysroot:?}");
+    sysroot
+});
 
 fn main() {
     for cr in get_unstable_sysroot_crates() {
         check_crate_is_unstable(&cr);
     }
-    println!("Done");
+
+    rmake_diagnostics::check_diagnostics();
+
+    println!("rmake test passed successfully");
+}
+
+fn is_stable_crate(name: &str) -> bool {
+    matches!(name, "std" | "alloc" | "core" | "proc_macro")
+}
+
+/// Find the library directory within a sysroot.
+fn sysroot_libs_dir(sysroot: &Path) -> PathBuf {
+    let ret = sysroot.join("lib").join("rustlib").join(target()).join("lib");
+    println!("Sysroot libs dir: {ret:?}");
+    ret
 }
 
 #[derive(Debug)]
@@ -45,12 +65,10 @@ fn check_crate_is_unstable(cr: &Crate) {
 }
 
 fn get_unstable_sysroot_crates() -> Vec<Crate> {
-    let sysroot = PathBuf::from(rustc().print("sysroot").run().stdout_utf8().trim());
-    let sysroot_libs_dir = sysroot.join("lib").join("rustlib").join(target()).join("lib");
-    println!("Sysroot libs dir: {sysroot_libs_dir:?}");
+    let libs_dir = sysroot_libs_dir(&SYSROOT);
 
     // Generate a list of all library crates in the sysroot.
-    let sysroot_crates = get_all_crates_in_dir(&sysroot_libs_dir);
+    let sysroot_crates = get_all_crates_in_dir(&libs_dir);
     println!(
         "Found {} sysroot crates: {:?}",
         sysroot_crates.len(),
@@ -60,7 +78,8 @@ fn get_unstable_sysroot_crates() -> Vec<Crate> {
     // Self-check: If we didn't find `core`, we probably checked the wrong directory.
     assert!(
         sysroot_crates.iter().any(|cr| cr.name == "core"),
-        "Couldn't find `core` in {sysroot_libs_dir:?}"
+        "Couldn't find `core` in {:?}",
+        &libs_dir
     );
 
     let unstable_sysroot_crates =
@@ -68,7 +87,8 @@ fn get_unstable_sysroot_crates() -> Vec<Crate> {
     // Self-check: There should be at least one unstable crate in the directory.
     assert!(
         !unstable_sysroot_crates.is_empty(),
-        "Couldn't find any unstable crates in {sysroot_libs_dir:?}"
+        "Couldn't find any unstable crates in {:?}",
+        &libs_dir
     );
     unstable_sysroot_crates
 }
