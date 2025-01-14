@@ -187,6 +187,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .collect();
 
+        tracing::info!("visible traits: {visible_traits:#?}");
+        tracing::info!("priv en {}", tcx.features().enabled(sym::rustc_private));
+
+        for cnum in tcx.crates(()).iter().copied() {
+            let uvis = tcx.is_user_visible_dep(cnum);
+            let name = tcx.crate_name(cnum);
+            let ext = tcx.extern_crate(cnum);
+            let pr = tcx.is_private_dep(cnum);
+
+            tracing::info!("{cnum:?} {name:?} uvis {uvis:?} priv {pr:?} ext {ext:#?}");
+        }
+
         let wider_candidate_names: Vec<_> = visible_traits
             .iter()
             .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())

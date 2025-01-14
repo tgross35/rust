@@ -29,7 +29,7 @@ use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 
@@ -396,9 +396,52 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     /// Sometimes the directly dependent crate is not specified by `--extern`, in this case,
     /// `private-dep` is none during loading. This is equivalent to the scenario where the
     /// command parameter is set to `public-dependency`
-    fn is_private_dep(&self, name: &str, private_dep: Option<bool>) -> bool {
-        self.sess.opts.externs.get(name).map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
-            && private_dep.unwrap_or(true)
+    fn is_private_dep(
+        &self,
+        name: Symbol,
+        private_dep: Option<bool>,
+        dep_root: Option<&CratePaths>,
+    ) -> bool {
+        let extern_private = self.sess.opts.externs.get(name.as_str()).map(|e| e.is_private_dep);
+        tracing::info!(
+            "checking private dep for {name}, priv {private_dep:?} ext {:?} dep_of {:?}",
+            extern_private,
+            dep_root.map(|d| d.name)
+        );
+
+        // Standard library crates are never private.
+        if STDLIB_STABLE_CRATES.contains(&name) {
+            tracing::info!("returning false for {name} is private");
+            return false;
+        }
+
+        // private_dep means the parent has requested the dep be private, in crate meta
+
+        let ret = match (extern_private, private_dep) {
+            // If the crate is marked private via extern and the parent dependency, if any, is
+            // also private, this crate is private.
+            (Some(true), Some(true) | None) => true,
+
+            // `std` doesn't usually mark these private so
+            (None, _) if dep_root.map_or(false, |d| STDLIB_STABLE_CRATES.contains(&d.name)) => true,
+            // If this crate isn't marked private via extern, defer to the parent.
+            (None, Some(v)) => v,
+            // If the crate is a dependency of `std`, we mark it private
+            //
+            //  and hasn't been explicitly set
+
+            // In all other cases, the crate is public.
+
+            // Crate requested via `--extern`
+            (Some(false), _) => false,
+            // Dependency of a non-public
+            (_, Some(false)) => false,
+
+            // In all other cases, this crate is public.
+            _ => false,
+        };
+        tracing::info!("returning {ret} for {name} is private");
+        ret
     }
 
     fn register_crate(
@@ -416,7 +459,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        let private_dep = self.is_private_dep(name.as_str(), private_dep);
+        let private_dep = self.is_private_dep(name, private_dep, dep_root);
 
         // Claim this crate number and cache it
         let feed = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
@@ -567,17 +610,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         if !name.as_str().is_ascii() {
             return Err(CrateError::NonAsciiName(name));
         }
-        let (dep_root, hash, host_hash, extra_filename, path_kind, private_dep) = match dep_of {
-            Some((dep_root, dep)) => (
-                Some(dep_root),
-                Some(dep.hash),
-                dep.host_hash,
-                Some(&dep.extra_filename[..]),
-                PathKind::Dependency,
-                Some(dep.is_private),
-            ),
-            None => (None, None, None, None, PathKind::Crate, None),
-        };
+
+        let dep_root = dep_of.map(|d| d.0);
+        let dep = dep_of.map(|d| d.1);
+        let hash = dep.map(|d| d.hash);
+        let host_hash = dep.map(|d| d.host_hash).flatten();
+        let extra_filename = dep.map(|d| &d.extra_filename[..]);
+        let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
+        let private_dep = dep.map(|d| d.is_private);
+
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
         } else {
@@ -614,7 +655,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
-                let private_dep = self.is_private_dep(name.as_str(), private_dep);
+                let private_dep = self.is_private_dep(name, private_dep, dep_root);
                 let data = self.cstore.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
