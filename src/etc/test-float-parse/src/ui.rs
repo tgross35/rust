@@ -1,10 +1,9 @@
 //! Progress bars and such.
 
-use std::io::{self, Write};
 use std::process::ExitCode;
 use std::time::Duration;
 
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::{Completed, Config, EarlyExit, FinishedAll, TestInfo};
 
@@ -14,11 +13,7 @@ const PB_TEMPLATE_FINAL: &str =
     "[{elapsed:3} {percent:3}%] NAME ({pos}/{len}, {msg:.COLOR}, {per_sec}, {elapsed_precise})";
 
 /// Create a new progress bar within a multiprogress bar.
-pub fn create_pb(
-    total_tests: u64,
-    short_name_padded: &str,
-    all_bars: &mut Vec<ProgressBar>,
-) -> ProgressBar {
+pub fn create_pb(total_tests: u64, short_name_padded: &str) -> ProgressBar {
     let pb = ProgressBar::new(total_tests);
     let pb_style = ProgressStyle::with_template(&PB_TEMPLATE.replace("NAME", short_name_padded))
         .unwrap()
@@ -26,7 +21,6 @@ pub fn create_pb(
 
     pb.set_style(pb_style.clone());
     pb.set_message("0");
-    all_bars.push(pb.clone());
     pb
 }
 
@@ -113,19 +107,4 @@ pub fn finish(tests: &[TestInfo], total_elapsed: Duration, cfg: &Config) -> Exit
     } else {
         ExitCode::SUCCESS
     }
-}
-
-/// indicatif likes to eat panic messages. This workaround isn't ideal, but it improves things.
-/// <https://github.com/console-rs/indicatif/issues/121>.
-pub fn set_panic_hook(drop_bars: Vec<ProgressBar>) {
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        for bar in &drop_bars {
-            bar.abandon();
-            println!();
-            io::stdout().flush().unwrap();
-            io::stderr().flush().unwrap();
-        }
-        hook(info);
-    }));
 }
