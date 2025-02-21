@@ -31,10 +31,10 @@ pub fn finalize_pb(pb: &ProgressBar, short_name_padded: &str, c: &Completed) {
     // Use a tuple so we can use colors
     let (color, msg, finish_pb): (&str, String, fn(&ProgressBar, String)) = match &c.result {
         Ok(FinishedAll) if f > 0 => {
-            ("red", format!("{f} f (finished with errors)",), ProgressBar::finish_with_message)
+            ("red", format!("{f} f (completed with errors)",), ProgressBar::finish_with_message)
         }
         Ok(FinishedAll) => {
-            ("green", format!("{f} f (finished successfully)",), ProgressBar::finish_with_message)
+            ("green", format!("{f} f (completed successfully)",), ProgressBar::finish_with_message)
         }
         Err(EarlyExit::Timeout) => {
             ("red", format!("{f} f (timed out)"), ProgressBar::abandon_with_message)
