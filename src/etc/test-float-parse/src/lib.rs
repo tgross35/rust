@@ -2,7 +2,7 @@ mod traits;
 mod ui;
 mod validate;
 
-use std::any::{TypeId, type_name};
+use std::any::type_name;
 use std::cmp::min;
 use std::ops::RangeInclusive;
 use std::process::ExitCode;
@@ -10,11 +10,12 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{fmt, time};
 
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 use rand::distributions::{Distribution, Standard};
 use rayon::prelude::*;
 use time::{Duration, Instant};
 use traits::{Float, Generator, Int};
+use validate::CheckError;
 
 /// Test generators.
 mod gen {
@@ -160,9 +161,6 @@ where
 #[derive(Debug)]
 pub struct TestInfo {
     pub name: String,
-    /// Tests are identified by the type ID of `(F, G)` (tuple of the float and generator type).
-    /// This gives an easy way to associate messages with tests.
-    id: TypeId,
     float_name: &'static str,
     float_bits: u32,
     gen_name: &'static str,
@@ -173,6 +171,7 @@ pub struct TestInfo {
     launch: fn(&TestInfo, &Config),
     /// Progress bar to be updated.
     pb: Option<ProgressBar>,
+    mp: Option<MultiProgress>,
     /// Once completed, this will be set.
     completed: OnceLock<Completed>,
 }
@@ -190,11 +189,11 @@ impl TestInfo {
         let gen_short_name = G::SHORT_NAME;
 
         let info = TestInfo {
-            id: TypeId::of::<(F, G)>(),
             float_name: f_name,
             float_bits: F::BITS,
             gen_name,
             pb: None,
+            mp: None,
             name: format!("{f_name} {gen_name}"),
             short_name: format!("{f_name} {gen_short_name}"),
             launch: test_runner::<F, G>,
@@ -210,91 +209,64 @@ impl TestInfo {
     }
 
     /// Create a progress bar for this test within a multiprogress bar.
-    fn register_pb(&mut self) {
-        self.pb = Some(ui::create_pb(self.total_tests, &self.short_name_padded()));
+    fn register_pb(&mut self, mp: &MultiProgress, all_bars: &mut Vec<ProgressBar>) {
+        self.pb = Some(ui::create_pb(self.total_tests, &self.short_name_padded(), all_bars));
+        self.mp = Some(mp.clone());
     }
 
     /// When the test is finished, update progress bar messages and finalize.
     fn finalize_pb(&self, c: &Completed) {
         let pb = self.pb.as_ref().unwrap();
-        ui::finalize_pb(pb, &self.short_name_padded(), c);
+        let mp = self.mp.as_ref().unwrap();
+        ui::finalize_pb(mp, pb, &self.short_name_padded(), c);
     }
 
     /// True if this should be run after all others.
     fn is_huge_test(&self) -> bool {
         self.total_tests >= HUGE_TEST_CUTOFF
     }
-}
 
-/// A message sent from test runner threads to the UI/log thread.
-#[derive(Clone, Debug)]
-struct Msg {
-    id: TypeId,
-    update: Update,
-}
-
-impl Msg {
-    /// Wrap an `Update` into a message for the specified type. We use the `TypeId` of `(F, G)` to
-    /// identify which test a message in the channel came from.
-    #[must_use]
-    fn new<F: Float, G: Generator<F>>(u: Update) -> Self {
-        Self { id: TypeId::of::<(F, G)>(), update: u }
-    }
-
-    /// Update UI as needed for a single message received from the test runners.
-    fn handle(self, test: &TestInfo) {
-        let pb = test.pb.as_ref().unwrap();
-
-        match self.update {
-            Update::Started => {
-                pb.println(format!("Testing '{}'", test.name));
-            }
-            Update::Progress { executed, failures } => {
-                pb.set_message(format! {"{failures}"});
-                pb.set_position(executed);
-            }
-            Update::Failure { fail, input, float_res } => {
-                pb.println(format!(
-                    "Failure in '{}': {fail}. parsing '{input}'. Parsed as: {float_res}",
-                    test.name
-                ));
-            }
-            Update::Completed(c) => {
-                test.finalize_pb(&c);
-
-                let prefix = match c.result {
-                    Ok(FinishedAll) => "Completed tests for",
-                    Err(EarlyExit::Timeout) => "Timed out",
-                    Err(EarlyExit::MaxFailures) => "Max failures reached for",
-                };
-
-                pb.println(format!(
-                    "{prefix} generator '{}' in {:?}. {} tests run, {} failures",
-                    test.name, c.elapsed, c.executed, c.failures
-                ));
-                test.completed.set(c).unwrap();
-            }
-        };
-    }
-}
-
-/// Status sent with a message.
-#[derive(Clone, Debug)]
-enum Update {
     /// Starting a new test runner.
-    Started,
+    fn emit_started(&self) {
+        let mp = self.mp.as_ref().unwrap();
+        mp.println(format!("Testing '{}'", self.name)).unwrap();
+    }
+
     /// Completed a out of b tests.
-    Progress { executed: u64, failures: u64 },
+    fn emit_progress_update(&self, executed: u64, failures: u64) {
+        let pb = self.pb.as_ref().unwrap();
+        pb.set_message(format! {"{failures}"});
+        pb.set_position(executed);
+    }
+
     /// Received a failed test.
-    Failure {
-        fail: CheckFailure,
-        /// String for which parsing was attempted.
-        input: Box<str>,
-        /// The parsed & decomposed `FloatRes`, already stringified so we don't need generics here.
-        float_res: Box<str>,
-    },
-    /// Exited with an unexpected condition.
-    Completed(Completed),
+    fn emit_failure(&self, e: CheckError) {
+        let mp = self.mp.as_ref().unwrap();
+        let CheckError { fail, input, float_res } = e;
+        mp.println(format!(
+            "Failure in '{}': {fail}. parsing '{input}'. Parsed as: {float_res}",
+            self.name
+        ))
+        .unwrap();
+    }
+
+    fn complete(&self, c: Completed) {
+        let mp = self.mp.as_ref().unwrap();
+        self.finalize_pb(&c);
+
+        let prefix = match c.result {
+            Ok(FinishedAll) => "Completed tests for",
+            Err(EarlyExit::Timeout) => "Timed out",
+            Err(EarlyExit::MaxFailures) => "Max failures reached for",
+        };
+
+        mp.println(format!(
+            "{prefix} generator '{}' in {:?}. {} tests run, {} failures",
+            self.name, c.elapsed, c.executed, c.failures
+        ))
+        .unwrap();
+        self.completed.set(c).unwrap();
+    }
 }
 
 /// Result of an input did not parsing successfully.
@@ -402,11 +374,16 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
     for test in tests.iter() {
         println!("Launching test '{}'", test.name);
     }
+    // Configure progress bars
+
+    let mut all_progress_bars = Vec::new();
+    let mp = MultiProgress::new();
 
     let start = Instant::now();
 
     for test in tests.iter_mut() {
-        test.register_pb();
+        test.register_pb(&mp, &mut all_progress_bars);
+        ui::set_panic_hook(&all_progress_bars);
         ((test.launch)(test, cfg));
     }
 
@@ -425,7 +402,7 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
     let checks_per_update = min(total, 1000);
     let started = Instant::now();
 
-    Msg::new::<F, G>(Update::Started).handle(test);
+    test.emit_started();
 
     // Function to execute for a single test iteration.
     let check_one = |buf: &mut String, ctx: G::WriteCtx| {
@@ -436,7 +413,7 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
         match validate::validate::<F>(buf) {
             Ok(()) => (),
             Err(e) => {
-                Msg::new::<F, G>(e).handle(test);
+                test.emit_failure(e);
                 let f = failures.fetch_add(1, Ordering::Relaxed);
                 // End early if the limit is exceeded.
                 if f >= cfg.max_failures {
@@ -448,9 +425,7 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
         // Send periodic updates
         if executed % checks_per_update == 0 {
             let failures = failures.load(Ordering::Relaxed);
-
-            Msg::new::<F, G>(Update::Progress { executed, failures }).handle(test);
-
+            test.emit_progress_update(executed, failures);
             if started.elapsed() > cfg.timeout {
                 return Err(EarlyExit::Timeout);
             }
@@ -477,6 +452,6 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
     };
 
     let result = res.map(|()| FinishedAll);
-    Msg::new::<F, G>(Update::Completed(Completed { executed, failures, result, warning, elapsed }))
-        .handle(test);
+
+    test.complete(Completed { executed, failures, result, warning, elapsed });
 }
