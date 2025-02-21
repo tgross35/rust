@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod traits;
 mod ui;
 mod validate;
@@ -44,7 +45,7 @@ const HUGE_TEST_CUTOFF: u64 = 5_000_000;
 /// Seed for tests that use a deterministic RNG.
 const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
 
-/// Global configuration
+/// Global configuration.
 #[derive(Debug)]
 pub struct Config {
     pub timeout: Duration,
@@ -166,12 +167,13 @@ pub struct TestInfo {
     gen_name: &'static str,
     /// Name for display in the progress bar.
     short_name: String,
+    /// Pad the short name to a common width for progress bar use.
+    short_name_padded: String,
     total_tests: u64,
     /// Function to launch this test.
     launch: fn(&TestInfo, &Config),
     /// Progress bar to be updated.
-    pb: Option<ProgressBar>,
-    mp: Option<MultiProgress>,
+    progress: Option<ui::Progress>,
     /// Once completed, this will be set.
     completed: OnceLock<Completed>,
 }
@@ -187,15 +189,18 @@ impl TestInfo {
         let f_name = type_name::<F>();
         let gen_name = G::NAME;
         let gen_short_name = G::SHORT_NAME;
+        let name = format!("{f_name} {gen_name}");
+        let short_name = format!("{f_name} {gen_short_name}");
+        let short_name_padded = format!("{short_name:18}");
 
         let info = TestInfo {
             float_name: f_name,
             float_bits: F::BITS,
             gen_name,
-            pb: None,
-            mp: None,
-            name: format!("{f_name} {gen_name}"),
-            short_name: format!("{f_name} {gen_short_name}"),
+            progress: None,
+            name,
+            short_name_padded,
+            short_name,
             launch: test_runner::<F, G>,
             total_tests: G::total_tests(),
             completed: OnceLock::new(),
@@ -203,69 +208,56 @@ impl TestInfo {
         v.push(info);
     }
 
-    /// Pad the short name to a common width for progress bar use.
-    fn short_name_padded(&self) -> String {
-        format!("{:18}", self.short_name)
-    }
-
-    /// Create a progress bar for this test within a multiprogress bar.
-    fn register_pb(&mut self, mp: &MultiProgress, all_bars: &mut Vec<ProgressBar>) {
-        self.pb = Some(ui::create_pb(self.total_tests, &self.short_name_padded(), all_bars));
-        self.mp = Some(mp.clone());
-    }
-
-    /// When the test is finished, update progress bar messages and finalize.
-    fn finalize_pb(&self, c: &Completed) {
-        let pb = self.pb.as_ref().unwrap();
-        let mp = self.mp.as_ref().unwrap();
-        ui::finalize_pb(mp, pb, &self.short_name_padded(), c);
-    }
+    // /// Create a progress bar for this test within a multiprogress bar.
+    // fn register_pb(&mut self, mp: &MultiProgress, all_bars: &mut Vec<ProgressBar>) {
+    //     self.pb = Some(ui::create_pb(mp, self.total_tests, &self.short_name_padded(), all_bars));
+    //     self.mp = Some(mp.clone());
+    // }
 
     /// True if this should be run after all others.
     fn is_huge_test(&self) -> bool {
         self.total_tests >= HUGE_TEST_CUTOFF
     }
 
-    /// Starting a new test runner.
-    fn emit_started(&self) {
-        let mp = self.mp.as_ref().unwrap();
-        mp.println(format!("Testing '{}'", self.name)).unwrap();
-    }
-
     /// Completed a out of b tests.
     fn emit_progress_update(&self, executed: u64, failures: u64) {
-        let pb = self.pb.as_ref().unwrap();
-        pb.set_message(format! {"{failures}"});
-        pb.set_position(executed);
+        // let pb = self.pb.as_ref().unwrap();
+        // pb.set_message(format! {"{failures}"});
+        // pb.set_position(executed);
+        self.progress.as_ref().unwrap().update(executed, "");
     }
 
     /// Received a failed test.
     fn emit_failure(&self, e: CheckError) {
-        let mp = self.mp.as_ref().unwrap();
-        let CheckError { fail, input, float_res } = e;
-        mp.println(format!(
-            "Failure in '{}': {fail}. parsing '{input}'. Parsed as: {float_res}",
-            self.name
-        ))
-        .unwrap();
+        // let mp = self.mp.as_ref().unwrap();
+        // let CheckError { fail, input, float_res } = e;
+        // mp.println(format!(
+        //     "Failure in '{}': {fail}. parsing '{input}'. Parsed as: {float_res}",
+        //     self.name
+        // ))
+        // .unwrap();
+
+        // self.progress.as_ref().unwrap().update(executed, "");
     }
 
+    /// When the test is finished, update progress bar messages and finalize.
     fn complete(&self, c: Completed) {
-        let mp = self.mp.as_ref().unwrap();
-        self.finalize_pb(&c);
+        self.progress.as_ref().unwrap().complete(self, c, 0);
+        // let mp = self.mp.as_ref().unwrap();
+        // self.finalize_pb(&c);
 
-        let prefix = match c.result {
-            Ok(FinishedAll) => "Completed tests for",
-            Err(EarlyExit::Timeout) => "Timed out",
-            Err(EarlyExit::MaxFailures) => "Max failures reached for",
-        };
+        // let prefix = match c.result {
+        //     Ok(FinishedAll) => "Completed tests for",
+        //     Err(EarlyExit::Timeout) => "Timed out",
+        //     Err(EarlyExit::MaxFailures) => "Max failures reached for",
+        // };
 
-        mp.println(format!(
-            "{prefix} generator '{}' in {:?}. {} tests run, {} failures",
-            self.name, c.elapsed, c.executed, c.failures
-        ))
-        .unwrap();
-        self.completed.set(c).unwrap();
+        // mp.println(format!(
+        //     "{prefix} generator '{}' in {:?}. {} tests run, {} failures",
+        //     self.name, c.elapsed, c.executed, c.failures
+        // ))
+        // .unwrap();
+        // self.completed.set(c).unwrap();
     }
 }
 
@@ -366,23 +358,18 @@ enum EarlyExit {
 /// rest of the thread pool to execute the tests.
 fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
     // Run shorter tests and smaller float types first.
-    tests.sort_unstable_by(|a, b| {
-        a.total_tests.cmp(&b.total_tests).then(a.float_bits.cmp(&b.float_bits))
-    });
-    // tests.sort_unstable_by_key(|test| test.total_tests);
+    tests.sort_unstable_by_key(|test| (test.total_tests, test.float_bits));
 
     for test in tests.iter() {
         println!("Launching test '{}'", test.name);
     }
-    // Configure progress bars
 
     let mut all_progress_bars = Vec::new();
     let mp = MultiProgress::new();
-
     let start = Instant::now();
 
     for test in tests.iter_mut() {
-        test.register_pb(&mp, &mut all_progress_bars);
+        test.progress = Some(ui::Progress::new(&mp, test, &mut all_progress_bars));
         ui::set_panic_hook(&all_progress_bars);
         ((test.launch)(test, cfg));
     }
@@ -402,7 +389,7 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
     let checks_per_update = min(total, 1000);
     let started = Instant::now();
 
-    test.emit_started();
+    test.progress.as_ref().unwrap().start(&test.name);
 
     // Function to execute for a single test iteration.
     let check_one = |buf: &mut String, ctx: G::WriteCtx| {

@@ -9,53 +9,88 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use crate::{Completed, Config, EarlyExit, FinishedAll, TestInfo};
 
 /// Templates for progress bars.
-const PB_TEMPLATE: &str = "[{elapsed:3} {percent:3}%] {bar:20.cyan/blue} NAME ({pos}/{len}, {msg} f, {per_sec}, eta {eta})";
-const PB_TEMPLATE_FINAL: &str =
-    "[{elapsed:3} {percent:3}%] NAME ({pos}/{len}, {msg:.COLOR}, {per_sec}, {elapsed_precise})";
+// const PB_TEMPLATE: &str = "[{elapsed:3} {percent:3}%] {bar:20.cyan/blue} NAME ({pos}/{len}, {msg} f, {per_sec}, eta {eta})";
+// const PB_TEMPLATE_FINAL: &str = "[{elapsed:3} {percent:3}%] final NAME ({pos}/{len}, {msg:.COLOR}, {per_sec}, {elapsed_precise})";
 
-/// Create a new progress bar within a multiprogress bar.
-pub fn create_pb(
-    total_tests: u64,
-    short_name_padded: &str,
-    all_bars: &mut Vec<ProgressBar>,
-) -> ProgressBar {
-    let pb = ProgressBar::new(total_tests);
-    let pb_style = ProgressStyle::with_template(&PB_TEMPLATE.replace("NAME", short_name_padded))
+const PB_TEMPLATE: &str = "[{elapsed:3} {percent:3}%] {bar:20.cyan/blue} NAME \
+        {human_pos:>13}/{human_len:13} {per_sec:18} eta {eta:8} {msg}";
+const PB_TEMPLATE_FINAL: &str = "[{elapsed:3} {percent:3}%] {bar:20.cyan/blue} NAME \
+        {human_pos:>13}/{human_len:13} {per_sec:18} done in {elapsed_precise}";
+
+#[derive(Debug)]
+pub struct Progress {
+    pb: ProgressBar,
+    mp: MultiProgress,
+}
+
+impl Progress {
+    /// Create a new progress bar within a multiprogress bar.
+    pub fn new(mp: &MultiProgress, test: &TestInfo, all_bars: &mut Vec<ProgressBar>) -> Self {
+        let pb = ProgressBar::new(test.total_tests);
+        let pb_style =
+            ProgressStyle::with_template(&PB_TEMPLATE.replace("NAME", &test.short_name_padded))
+                .unwrap()
+                .progress_chars("##-");
+
+        pb.set_style(pb_style.clone());
+        pb.set_message("0");
+        mp.add(pb.clone());
+        all_bars.push(pb.clone());
+        Progress { pb, mp: mp.clone() }
+    }
+
+    /// Starting a new test runner.
+    pub fn start(&self, name: &str) {
+        self.mp.println(format!("Testing `{name}`")).unwrap();
+    }
+
+    pub fn update(&self, completed: u64, input: impl core::fmt::Debug) {
+        // Infrequently update the progress bar.
+        if completed % 20_000 == 0 {
+            self.pb.set_position(completed);
+        }
+
+        if completed % 500_000 == 0 {
+            self.pb.set_message(format!("input: {input:<24?}"));
+        }
+    }
+
+    pub fn complete(&self, test: &TestInfo, c: Completed, real_total: u64) {
+        let final_style = ProgressStyle::with_template(
+            &PB_TEMPLATE_FINAL.replace("NAME", &test.short_name_padded),
+        )
         .unwrap()
         .progress_chars("##-");
 
-    pb.set_style(pb_style.clone());
-    pb.set_message("0");
-    all_bars.push(pb.clone());
-    pb
-}
+        let f = c.failures;
 
-/// Removes the status bar and replace it with a message.
-pub fn finalize_pb(mp: &MultiProgress, pb: &ProgressBar, short_name_padded: &str, c: &Completed) {
-    let f = c.failures;
+        // Use a tuple so we can use colors
+        let (color, msg, finish_pb): (&str, String, fn(&ProgressBar)) = match &c.result {
+            Ok(FinishedAll) if f > 0 => {
+                ("red", format!("{f} f (completed with errors)",), ProgressBar::finish)
+            }
+            Ok(FinishedAll) => {
+                ("green", format!("{f} f (completed successfully)",), ProgressBar::finish)
+            }
+            Err(EarlyExit::Timeout) => ("red", format!("{f} f (timed out)"), ProgressBar::abandon),
+            Err(EarlyExit::MaxFailures) => {
+                ("red", format!("{f} f (failure limit)"), ProgressBar::abandon)
+            }
+        };
 
-    // Use a tuple so we can use colors
-    let (color, msg, finish_pb): (&str, String, fn(&ProgressBar)) = match &c.result {
-        Ok(FinishedAll) if f > 0 => {
-            ("red", format!("{f} f (completed with errors)",), ProgressBar::finish)
-        }
-        Ok(FinishedAll) => {
-            ("green", format!("{f} f (completed successfully)",), ProgressBar::finish)
-        }
-        Err(EarlyExit::Timeout) => ("red", format!("{f} f (timed out)"), ProgressBar::abandon),
-        Err(EarlyExit::MaxFailures) => {
-            ("red", format!("{f} f (failure limit)"), ProgressBar::abandon)
-        }
-    };
+        let final_style = ProgressStyle::with_template(
+            &PB_TEMPLATE_FINAL.replace("NAME", &test.short_name_padded).replace("COLOR", color),
+        )
+        .unwrap();
 
-    let pb_style = ProgressStyle::with_template(
-        &PB_TEMPLATE_FINAL.replace("NAME", short_name_padded).replace("COLOR", color),
-    )
-    .unwrap();
+        self.pb.set_style(final_style);
+        finish_pb(&self.pb);
+        self.mp.println(msg).unwrap();
 
-    pb.set_style(pb_style);
-    finish_pb(pb);
-    mp.println(msg).unwrap();
+        // self.pb.set_style(final_style.clone());
+        // self.pb.set_position(real_total);
+        // self.pb.abandon();
+    }
 }
 
 /// Print final messages after all tests are complete.
