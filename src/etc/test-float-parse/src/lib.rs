@@ -80,10 +80,9 @@ pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
     let threads = std::thread::available_parallelism().map(Into::into).unwrap_or(0) * 3 / 2;
     rayon::ThreadPoolBuilder::new().num_threads(threads).build_global().unwrap();
 
-    let mut tests = register_tests(&cfg);
+    let tests = register_tests(&cfg);
     println!("Registered");
 
-    let initial_tests: Vec<_> = tests.iter().map(|t| t.name.clone()).collect();
     let unmatched: Vec<_> = include
         .iter()
         .chain(exclude.iter())
@@ -95,24 +94,27 @@ pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
         "filters were provided that have no matching tests: {unmatched:#?}"
     );
 
-    tests.retain(|test| !exclude.iter().any(|exc| test.matches(exc)));
+    let (mut run, skip): (Vec<_>, Vec<_>) = tests.into_iter().partition(|test| {
+        let mut res = !exclude.iter().any(|exc| test.matches(exc));
 
-    if cfg.skip_huge {
-        tests.retain(|test| !test.is_huge_test());
-    }
+        if cfg.skip_huge {
+            res = res && !test.is_huge_test();
+        }
 
-    if !include.is_empty() {
-        tests.retain(|test| include.iter().any(|inc| test.matches(inc)));
-    }
+        if !include.is_empty() {
+            res = res && include.iter().any(|inc| test.matches(inc));
+        }
 
-    for exc in initial_tests.iter().filter(|orig_name| !tests.iter().any(|t| t.name == **orig_name))
-    {
-        println!("Skipping test '{exc}'");
+        res
+    });
+
+    for test in skip {
+        println!("Skipping test '{}' ({} iterations)", test.name, test.total_tests);
     }
 
     println!("Launching all");
-    let elapsed = launch_tests(&mut tests, &cfg);
-    ui::finish_all(&tests, elapsed, &cfg)
+    let elapsed = launch_tests(&mut run, &cfg);
+    ui::finish_all(&run, elapsed, &cfg)
 }
 
 /// Load seed from environment or generate it randomly, printing its value.
@@ -345,7 +347,7 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
     tests.sort_unstable_by_key(|test| (test.total_tests, test.float_bits));
 
     for test in tests.iter() {
-        println!("Launching test '{}'", test.name);
+        println!("Launching test '{}' ({} iterations)", test.name, test.total_tests);
     }
 
     let mut all_progress_bars = Vec::new();
