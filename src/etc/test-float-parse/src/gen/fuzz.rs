@@ -62,8 +62,7 @@ where
     }
 
     fn new() -> Self {
-        let rng = ChaCha8Rng::from_seed(SEED);
-
+        let rng = ChaCha8Rng::from_seed(*SEED.get().unwrap());
         Self { iter: 0..Self::total_tests(), rng, marker: PhantomData }
     }
 

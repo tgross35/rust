@@ -8,9 +8,10 @@ use std::ops::RangeInclusive;
 use std::process::ExitCode;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::{fmt, time};
+use std::{env, fmt, time};
 
-use rand::distributions::{Distribution, Standard};
+use rand::Rng;
+use rand::distributions::{Alphanumeric, Distribution, Standard};
 use rayon::prelude::*;
 use time::{Duration, Instant};
 use traits::{Float, Generator, Int};
@@ -40,8 +41,11 @@ const MAX_BITS_FOR_EXHAUUSTIVE: u32 = 32;
 /// `--skip-huge`.
 const HUGE_TEST_CUTOFF: u64 = 5_000_000;
 
-/// Seed for tests that use a deterministic RNG.
-const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
+const SEED_ENV: &str = "TEST_FLOAT_PARSE_SEED";
+
+/// Seed for tests that use a deterministic RNG. Use the seed from the environment if set,
+/// otherwise generate a random seed.
+pub static SEED: OnceLock<[u8; 32]> = OnceLock::new();
 
 /// Global configuration.
 #[derive(Debug)]
@@ -69,15 +73,17 @@ impl Default for Config {
 
 /// Collect, filter, and launch all tests.
 pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
+    configure_seed();
+
     // With default parallelism, the CPU doesn't saturate. We don't need to be nice to
     // other processes, so do 1.5x to make sure we use all available resources.
     let threads = std::thread::available_parallelism().map(Into::into).unwrap_or(0) * 3 / 2;
     rayon::ThreadPoolBuilder::new().num_threads(threads).build_global().unwrap();
 
     let mut tests = register_tests(&cfg);
-    println!("registered");
-    let initial_tests: Vec<_> = tests.iter().map(|t| t.name.clone()).collect();
+    println!("Registered");
 
+    let initial_tests: Vec<_> = tests.iter().map(|t| t.name.clone()).collect();
     let unmatched: Vec<_> = include
         .iter()
         .chain(exclude.iter())
@@ -107,6 +113,21 @@ pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
     println!("Launching all");
     let elapsed = launch_tests(&mut tests, &cfg);
     ui::finish_all(&tests, elapsed, &cfg)
+}
+
+/// Load seed from environment or generate it randomly, printing its value.
+pub fn configure_seed() {
+    let seed_str = env::var(SEED_ENV).unwrap_or_else(|_| {
+        let mut rng = rand::thread_rng();
+        (0..32).map(|_| rng.sample(Alphanumeric) as char).collect()
+    });
+
+    let seed = seed_str.as_bytes().try_into().unwrap_or_else(|_| {
+        panic!("Seed must be 32 characters, got `{seed_str}`");
+    });
+
+    println!("Using {SEED_ENV}={seed_str}");
+    SEED.set(seed).unwrap();
 }
 
 /// Enumerate tests to run but don't actually run them.
