@@ -35,15 +35,15 @@
 // * AARCH64
 
 // Use `WIN` as a common prefix for MSVC and MINGW but *not* the softfloat test.
-//@ [AARCH64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-NOWIN
-//@ [ARM32] filecheck-flags: --check-prefixes CHECK-32B
-//@ [MINGW64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-WIN
-//@ [MSVC32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-32B-NOARM
-//@ [MSVC64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-WIN
-//@ [WASM32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-32B-NOARM
-//@ [WIN64-SOFT] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-WIN
-//@ [LINUX32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-32B-NOARM
-//@ [LINUX64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-NOWIN
+//@ [AARCH64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-NOWIN,CHECK-NOWIN
+//@ [ARM32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-NOWIN
+//@ [MINGW64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-WIN,CHECK-WIN
+//@ [MSVC32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-32B-NOARM,CHECK-WIN
+//@ [MSVC64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-WIN,CHECK-WIN
+//@ [WASM32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-32B-NOARM,CHECK-NOWIN
+//@ [WIN64-SOFT] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-WIN,CHECK-WIN
+//@ [LINUX32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-32B-NOARM,CHECK-NOWIN
+//@ [LINUX64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-NOWIN,CHECK-NOWIN
 
 #![crate_type = "lib"]
 #![no_std]
@@ -349,4 +349,36 @@ pub extern "C" fn ret_aggregate_i64(a: i32, b: &i64) -> Aggregate<i64> {
     // CHECK-32B:       store i64 [[LOAD]], ptr [[GEP]]
     // CHECK-32B:       ret void
     Aggregate { a, b: *b }
+}
+
+
+/* i128 */
+
+#[no_mangle]
+pub extern "C" fn pass_i128(a: i128, ret: &mut i128) {
+    // i128 is usually passed directly
+    // CHECK-NOWIN-LABEL: void @pass_i128(i128{{.*}} %a, ptr{{.*}}%ret)
+    // CHECK-NOWIN:       store i128 %a, ptr %ret
+    // CHECK-NOWIN-NEXT:  ret void
+
+    // on Windows it is passed on the stack
+    // CHECK-WIN-LABEL: void @pass_i128(ptr{{.*}} %a, ptr{{.*}}%ret)
+    // CHECK-WIN:       [[LOAD:%.+]] = load i128, ptr %a
+    // CHECK-WIN-NEXT:  store i128 [[LOAD]], ptr %ret
+    // CHECK-WIN-NEXT:  ret void
+    *ret = a
+}
+
+// Check that we produce the correct return ABI
+#[no_mangle]
+pub extern "C" fn ret_i128(a: &i128) -> i128 {
+    // i128 is always returned directly
+    // COM: CHECK-LABEL: i128 @ret_i128(ptr{{.*}} %a)
+    // COM: CHECK:       [[LOADED:%.+]] = load i128, ptr %a
+    // COM: CHECK-NEXT:  ret i128 [[LOADED]]
+    //
+    // CHECK-WIN: <16 x i8> @ret_i128(ptr{{.*}} %a)
+    // WIN:       [[LOAD:%.+]] = load <16 x i8>, ptr %a
+    // WIN-NEXT:  ret <16 x i8> [[LOAD]]
+    *a
 }
