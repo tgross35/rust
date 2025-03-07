@@ -126,3 +126,25 @@ pub extern "C" fn ret_aggregate_i8(a: i32, b: &i8) -> Aggregate<i8> {
     // CHECK-32B:       ret void
     Aggregate { a, b: *b }
 }
+
+
+/* i16 */
+
+#[no_mangle]
+pub extern "C" fn pass_i16(a: i16, ret: &mut i16) {
+    // i16 is always passed directly
+    // CHECK-LABEL: void @pass_i16(i16{{.*}} %a, ptr{{.*}}%ret)
+    // CHECK:       store i16 %a, ptr %ret
+    // CHECK-NEXT:  ret void
+    *ret = a
+}
+
+// Check that we produce the correct return ABI
+#[no_mangle]
+pub extern "C" fn ret_i16(a: &i16) -> i16 {
+    // i16 is always returned directly
+    // CHECK-LABEL: i16 @ret_i16(ptr{{.*}} %a)
+    // CHECK:       [[LOADED:%.+]] = load i16, ptr %a
+    // CHECK-NEXT:  ret i16 [[LOADED]]
+    *a
+}
