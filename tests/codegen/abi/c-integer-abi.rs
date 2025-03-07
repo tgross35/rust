@@ -267,7 +267,6 @@ pub extern "C" fn ret_i128(a: &i128) -> i128 {
 pub extern "C" fn pass_aggregate_i128(a: Aggregate<i128>, dst: &mut i128)  {
     // On most targets this is passed indirectly
     // AARCH64:    void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
-    // CHECK:      void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
     // SYSVX32:    void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
     // SYSVX64:    void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
     // MINGW64:    void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
