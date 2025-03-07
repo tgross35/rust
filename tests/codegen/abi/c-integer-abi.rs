@@ -10,18 +10,22 @@
 //@ [AARCH64] needs-llvm-components: aarch64
 //@ [ARM32] compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ [ARM32] needs-llvm-components: arm
-//@ [SYSVX32] compile-flags: --target i686-unknown-linux-gnu
-//@ [SYSVX32] needs-llvm-components: x86
-//@ [SYSVX64] compile-flags: --target x86_64-unknown-linux-gnu
-//@ [SYSVX64] needs-llvm-components: x86
 //@ [MINGW64] compile-flags: --target x86_64-pc-windows-gnu
 //@ [MINGW64] needs-llvm-components: x86
 //@ [MSVC32] compile-flags: --target i686-pc-windows-msvc
 //@ [MSVC32] needs-llvm-components: x86
 //@ [MSVC64] compile-flags: --target x86_64-pc-windows-msvc
 //@ [MSVC64] needs-llvm-components: x86
+//@ [NOSSE32] compile-flags: --target i586-unknown-linux-gnu
+//@ [NOSSE32] needs-llvm-components: x86
+//@ [NOSSE64] compile-flags: --target x86_64-unknown-none
+//@ [NOSSE64] needs-llvm-components: x86
 //@ [RISCV64] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@ [RISCV64] needs-llvm-components: riscv
+//@ [SYSVX32] compile-flags: --target i686-unknown-linux-gnu
+//@ [SYSVX32] needs-llvm-components: x86
+//@ [SYSVX64] compile-flags: --target x86_64-unknown-linux-gnu
+//@ [SYSVX64] needs-llvm-components: x86
 //@ [WASM32] compile-flags: --target wasm32-wasip1
 //@ [WASM32] needs-llvm-components: webassembly
 // UEFI uses the windows calling convention without SSE
