@@ -37,6 +37,7 @@
 // * WINX64 for windows x86_64
 // * AARCH64
 
+// All get CHECK
 // Use `WIN` as a common prefix for MSVC and MINGW but *not* the softfloat test.
 //@ [AARCH64] filecheck-flags: --check-prefixes CHECK-64B,CHECK-64B-NOWIN,CHECK-NOWIN
 //@ [ARM32] filecheck-flags: --check-prefixes CHECK-32B,CHECK-NOWIN
@@ -84,8 +85,10 @@ pub extern "C" fn pass_aggregate_i8(a: Aggregate<i8>, dst: &mut i8)  {
     // Passed as a single integer on 64-bit
     // CHECK-64B: void @pass_aggregate_i8(i64{{.*}} %0, ptr{{.*}} %dst)
 
-    // Passed on the stack on 32-bit
-    // CHECK-32B-NOARM: void @pass_aggregate_i8(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // Passed on the stack on most 32-bit platforms
+    // MSVC32:  void @pass_aggregate_i8(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // SYSVX32: void @pass_aggregate_i8(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // WASM32:  void @pass_aggregate_i8(ptr{{.*}} %a, ptr{{.*}} %dst)
 
     // Passed as an array on arm32
     // ARM32: void @pass_aggregate_i8([2 x i32] {{%.+}}, ptr{{.*}} %dst)
@@ -127,7 +130,9 @@ pub extern "C" fn pass_aggregate_i16(a: Aggregate<i16>, dst: &mut i16)  {
     // CHECK-64B: void @pass_aggregate_i16(i64{{.*}} %0, ptr{{.*}} %dst)
 
     // Passed on the stack on 32-bit
-    // CHECK-32B-NOARM: void @pass_aggregate_i16(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // MSVC32:  void @pass_aggregate_i16(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // SYSVX32: void @pass_aggregate_i16(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // WASM32:  void @pass_aggregate_i16(ptr{{.*}} %a, ptr{{.*}} %dst)
 
     // Passed as an array on arm32
     // ARM32: void @pass_aggregate_i16([2 x i32] {{%.+}}, ptr{{.*}} %dst)
@@ -140,7 +145,7 @@ pub extern "C" fn ret_aggregate_i16(a: i32, b: &i16) -> Aggregate<i16> {
     // CHECK-64B: i64 @ret_aggregate_i16(i32{{.*}} %a, ptr{{.*}} %b)
 
     // Returned indirectly on 32-bit
-    // CHECK-32B-LABEL: void @ret_aggregate_i16(ptr{{.*}} {{%.+}}, i32{{.*}} %a, ptr{{.*}} %b)
+    // CHECK-32B: void @ret_aggregate_i16(ptr{{.*}} {{%.+}}, i32{{.*}} %a, ptr{{.*}} %b)
     Aggregate { a, b: *b }
 }
 
@@ -167,8 +172,10 @@ pub extern "C" fn pass_aggregate_i32(a: Aggregate<i32>, dst: &mut i32)  {
     // Passed as a single integer on 64-bit
     // CHECK-64B: void @pass_aggregate_i32(i64{{.*}} %0, ptr{{.*}} %dst)
 
-    // Passed on the stack on 32-bit
-    // CHECK-32B-NOARM: void @pass_aggregate_i32(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // Passed on the stack on most 32-bit platforms
+    // MSVC32:  void @pass_aggregate_i32(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // SYSVX32: void @pass_aggregate_i32(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // WASM32:  void @pass_aggregate_i32(ptr{{.*}} %a, ptr{{.*}} %dst)
 
     // Passed indirectly on 32-bit
     // ARM32: void @pass_aggregate_i32([2 x i32] [[A:%.+]], ptr{{.*}} %dst)
@@ -208,8 +215,11 @@ pub extern "C" fn pass_aggregate_i64(a: Aggregate<i64>, dst: &mut i64)  {
     // CHECK-64B-NOWIN: void @pass_aggregate_i64({{(\{ i64, i64 \}|\[2 x i64\]).*}} {{%.+}}, ptr{{.*}} %dst)
 
     // Passed on the stack on Windows and 32-bit excluding arm
-    // CHECK-64B-WIN:   void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
-    // CHECK-32B-NOARM: void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // MINGW64: void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // MSVC32:  void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // MSVC64:  void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // SYSVX32: void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
+    // WASM32:  void @pass_aggregate_i64(ptr{{.*}} %a, ptr{{.*}} %dst)
 
     // Passed as an array on arm32
     // ARM32: void @pass_aggregate_i64([2 x i64] [[A:%.+]], ptr{{.*}} %dst)
@@ -219,11 +229,12 @@ pub extern "C" fn pass_aggregate_i64(a: Aggregate<i64>, dst: &mut i64)  {
 #[no_mangle]
 pub extern "C" fn ret_aggregate_i64(a: i32, b: &i64) -> Aggregate<i64> {
     // Passed as a scalar pair { i64, i64 } or array [2 x i64] on 64-bit
-    // CHECK-64B-NOWIN-LABEL: {{(\{ i64, i64 \}|\[2 x i64\])}} @ret_aggregate_i64(i32{{.*}} %a, ptr{{.*}} %b)
+    // CHECK-64B-NOWIN: {{(\{ i64, i64 \}|\[2 x i64\])}} @ret_aggregate_i64(i32{{.*}} %a, ptr{{.*}} %b)
 
     // On Windows and everything 32-bit, the struct is returned on the stack
-    // CHECK-64B-WIN: void @ret_aggregate_i64(ptr{{.*}} {{%.*}}, i32{{.*}} %a, ptr{{.*}} %b)
-    // CHECK-32B:     void @ret_aggregate_i64(ptr{{.*}} [[RET:%.+]], i32{{.*}} %a, ptr{{.*}} %b)
+    // MINGW64:   void @ret_aggregate_i64(ptr{{.*}} {{%.*}}, i32{{.*}} %a, ptr{{.*}} %b)
+    // MSVC64:    void @ret_aggregate_i64(ptr{{.*}} {{%.*}}, i32{{.*}} %a, ptr{{.*}} %b)
+    // CHECK-32B: void @ret_aggregate_i64(ptr{{.*}} {{%.*}}, i32{{.*}} %a, ptr{{.*}} %b)
     Aggregate { a, b: *b }
 }
 
@@ -275,9 +286,16 @@ pub extern "C" fn pass_aggregate_i128(a: Aggregate<i128>, dst: &mut i128)  {
     // RISCV64:    void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
     // WASM32:     void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
     // WIN64-SOFT: void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
-    //             void @pass_aggregate_i128(ptr{{.*}} {{%.+}}, ptr{{.*}} %dst)
 
     // Except arm32, where this appears as an array to return in registers.
     // ARM32:      void @pass_aggregate_i128([3 x i64] {{%.+}}, ptr{{.*}} %dst)
     *dst = a.b
+}
+
+
+#[no_mangle]
+pub extern "C" fn ret_aggregate_i128(a: i32, b: &i128) -> Aggregate<i128> {
+    // This type is always returned on the stack
+    // CHECK: void @ret_aggregate_i128(ptr{{.*}} {{%.+}}, i32{{.*}} %a, ptr{{.*}} %b)
+    Aggregate { a, b: *b }
 }
