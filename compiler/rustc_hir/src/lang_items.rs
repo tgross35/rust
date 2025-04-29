@@ -436,6 +436,11 @@ language_item_table! {
     DefaultTrait1,           sym::default_trait1,      default_trait1_trait,       Target::Trait,          GenericRequirement::None;
 
     ContractCheckEnsures,     sym::contract_check_ensures,      contract_check_ensures_fn,      Target::Fn, GenericRequirement::None;
+
+    // Arch-specific types
+    X87ExtDouble,            sym::x87_ext_double,      x87_ext_double,             Target::Struct,         GenericRequirement::None;
+    Bf16,                    sym::bf16,                bf16,                       Target::Struct,         GenericRequirement::None;
+    PpcDoubleDouble,         sym::ppc_double_double,   ppc_double_double,          Target::Struct,         GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item
