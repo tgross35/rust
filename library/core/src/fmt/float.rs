@@ -230,7 +230,59 @@ macro_rules! floating {
     };
 }
 
-floating! { f16 f32 f64 }
+floating! { f32 f64 }
+
+#[cfg(bootstrap)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Debug for f16 {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{:#06x}", self.to_bits())
+    }
+}
+
+// On target
+
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
+floating! { f16 }
+
+#[cfg(not(bootstrap))]
+#[cfg(not(target_has_reliable_f16))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Debug for f16 {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{:#06x}", self.to_bits())
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[cfg(not(target_has_reliable_f16))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Display for f16 {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[cfg(not(target_has_reliable_f16))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl LowerExp for f16 {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[cfg(not(target_has_reliable_f16))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl UpperExp for f16 {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for f128 {

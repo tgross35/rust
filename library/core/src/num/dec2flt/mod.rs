@@ -172,9 +172,21 @@ macro_rules! from_str_float_impl {
     };
 }
 
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
+
+#[cfg(not(bootstrap))]
+#[cfg(not(target_has_reliable_f16))]
+impl FromStr for f16 {
+    type Err = ParseFloatError;
+
+    fn from_str(_src: &str) -> Result<Self, ParseFloatError> {
+        unimplemented!("requires reliable f16")
+    }
+}
 
 /// An error which can be returned when parsing a float.
 ///
