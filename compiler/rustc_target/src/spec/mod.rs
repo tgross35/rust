@@ -2913,6 +2913,21 @@ impl DerefMut for Target {
     }
 }
 
+/// The different cases that an ABI may be specified.
+#[derive(Clone, Copy, Debug)]
+pub enum AbiCtx {
+    /// Non-naked function definitions (`extern "foo" fn`).
+    FnDef,
+    /// Function definitions with `#[unsafe(naked)]`.
+    NakedFnDef,
+    /// `unsafe extern "foo" { ... }` blocks.
+    ExternBlock,
+    /// Calls to a function with this ABI.
+    FnCall,
+    /// Stored function pointer types.
+    FnPtr,
+}
+
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: ExternAbi, c_variadic: bool) -> ExternAbi {
@@ -2962,28 +2977,48 @@ impl Target {
         }
     }
 
-    pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
+    pub fn is_abi_supported(&self, abi: ExternAbi, ctx: AbiCtx) -> bool {
         use ExternAbi::*;
+
+        let is_def = match ctx {
+            AbiCtx::FnDef | AbiCtx::NakedFnDef | AbiCtx::ExternBlock | AbiCtx::FnPtr => true,
+            AbiCtx::FnCall => false,
+        };
+
         match abi {
             Rust | C { .. } | System { .. } | RustCall | Unadjusted | Cdecl { .. } | RustCold => {
                 true
             }
+
+            // The `custom` ABI can only be defined in extern blocks or via naked functions, and Rust
+            // does not know how to call it.
+            Custom => match ctx {
+                AbiCtx::NakedFnDef | AbiCtx::FnPtr | AbiCtx::ExternBlock => true,
+                AbiCtx::FnDef | AbiCtx::FnCall => false,
+            },
+
             EfiApi => {
                 ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
             }
-            X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
             CCmseNonSecureCall | CCmseNonSecureEntry => {
                 ["thumbv8m.main-none-eabi", "thumbv8m.main-none-eabihf", "thumbv8m.base-none-eabi"]
                     .contains(&&self.llvm_target[..])
             }
+
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
             GpuKernel => ["amdgpu", "nvptx64"].contains(&&self.arch[..]),
-            Msp430Interrupt => self.arch == "msp430",
-            RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
-            AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Thiscall { .. } => self.arch == "x86",
+
+            // The interrupt ABIs can be used to define functions but cannot be called.
+            X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]) && is_def,
+            Msp430Interrupt => self.arch == "msp430" && is_def,
+            RiscvInterruptM | RiscvInterruptS => {
+                ["riscv32", "riscv64"].contains(&&self.arch[..]) && is_def
+            }
+            AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr" && is_def,
+
             // On windows these fall-back to platform native calling convention (C) when the
             // architecture is not supported.
             //

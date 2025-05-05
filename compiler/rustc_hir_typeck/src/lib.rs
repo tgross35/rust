@@ -41,6 +41,7 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
+use rustc_abi::ExternAbi;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -55,8 +56,9 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, sym};
+use rustc_target::spec::AbiCtx;
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -149,7 +151,35 @@ fn typeck_with_inspect<'tcx>(
             tcx.fn_sig(def_id).instantiate_identity()
         };
 
-        check_abi(tcx, span, fn_sig.abi());
+        let abi_ctx =
+            if tcx.has_attr(def_id, sym::naked) { AbiCtx::NakedFnDef } else { AbiCtx::FnDef };
+
+        // /// Enforce
+        // fn maybe_check_naked_custom_abi<'tcx>(
+        //     tcx: TyCtxt<'tcx>,
+        //     def_id: LocalDefId,
+        //     fn_sig: ty::PolyFnSig<'tcx>,
+        // ) {
+        //     let span = tcx.def_span(def_id);
+        //     if fn_sig.abi() != ExternAbi::Custom {
+        //         return;
+        //     }
+
+        //     debug_assert!(
+        //         tcx.has_attr(def_id, sym::naked),
+        //         "#non-naked functions should have been rejected earlier"
+        //     );
+
+        //     if !fn_sig.inputs().is_empty() {}
+
+        //     // if !fn_sig.output()
+        //     if matches!(fn_sig.output(), TyKind::Tup(tys) if tys.is_empty()) {
+        //         // too
+        //     }
+        // }
+
+        check_abi(tcx, span, fn_sig.abi(), abi_ctx);
+        // maybe_check_naked_custom_abi(tcx, def_id, fn_sig);
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);

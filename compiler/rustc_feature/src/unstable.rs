@@ -259,6 +259,7 @@ declare_features! (
     // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
+    (unstable, abi_custom, "1.89.0", None),
     /// Allows using the `vectorcall` ABI.
     (unstable, abi_vectorcall, "1.7.0", Some(124485)),
     /// Allows features specific to auto traits.

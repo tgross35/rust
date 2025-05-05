@@ -1,0 +1,41 @@
+error[E0428]: the name `naked_fn_def` is defined multiple times
+  --> $DIR/extern-custom.rs:31:1
+   |
+LL | unsafe extern "custom" fn naked_fn_def() {
+   | ---------------------------------------- previous definition of the value `naked_fn_def` here
+...
+LL | extern "custom" fn naked_fn_def() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `naked_fn_def` redefined here
+   |
+   = note: `naked_fn_def` must be defined only once in the value namespace of this module
+
+error[E0703]: invalid ABI: found `r#unsafe`
+  --> $DIR/extern-custom.rs:51:26
+   |
+LL | pub fn fn_ptr(_x: extern "unsafe" fn()) {}
+   |                          ^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error[E0601]: `main` function not found in crate `extern_custom`
+  --> $DIR/extern-custom.rs:63:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/extern-custom.rs`
+
+error[E0570]: `"custom"` is not a supported ABI for the current target
+  --> $DIR/extern-custom.rs:13:1
+   |
+LL | extern "custom" fn fn_def() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: `"custom"` is not a supported ABI for the current target
+  --> $DIR/extern-custom.rs:17:1
+   |
+LL | extern "custom" fn fn_def_closure() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0428, E0570, E0601, E0703.
+For more information about an error, try `rustc --explain E0428`.

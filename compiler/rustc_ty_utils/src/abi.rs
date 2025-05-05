@@ -260,6 +260,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv
         Thiscall { .. } => Conv::X86ThisCall,
         C { .. } => Conv::C,
         Unadjusted => Conv::C,
+        Custom => Conv::C,
         Win64 { .. } => Conv::X86_64Win64,
         SysV64 { .. } => Conv::X86_64SysV,
         Aapcs { .. } => Conv::ArmAapcs,

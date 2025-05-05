@@ -46,6 +46,9 @@ pub enum ExternAbi {
     SysV64 {
         unwind: bool,
     },
+    /// The ABI specifier used for functions that Rust both cannot define (excluding naked
+    /// functions) and cannot call.
+    Custom,
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
@@ -122,6 +125,7 @@ abi_impls! {
             Fastcall { unwind: true } =><= "fastcall-unwind",
             GpuKernel =><= "gpu-kernel",
             Msp430Interrupt =><= "msp430-interrupt",
+            Custom => <= "custom",
             PtxKernel =><= "ptx-kernel",
             RiscvInterruptM =><= "riscv-interrupt-m",
             RiscvInterruptS =><= "riscv-interrupt-s",

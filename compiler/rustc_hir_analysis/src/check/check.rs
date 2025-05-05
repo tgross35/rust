@@ -25,6 +25,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
+use rustc_target::spec::AbiCtx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
@@ -36,8 +37,8 @@ use {rustc_attr_parsing as attr, rustc_hir as hir};
 use super::compare_impl_item::check_type_bounds;
 use super::*;
 
-pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
+pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi, ctx: AbiCtx) {
+    if !tcx.sess.target.is_abi_supported(abi, ctx) {
         struct_span_code_err!(
             tcx.dcx(),
             span,
@@ -49,7 +50,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
 }
 
 pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
+    if !tcx.sess.target.is_abi_supported(abi, AbiCtx::FnPtr) {
         tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
             lint.primary_message(format!(
                 "the calling convention {abi} is not supported on this target"
@@ -780,7 +781,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
-            check_abi(tcx, it.span, abi);
+            check_abi(tcx, it.span, abi, AbiCtx::ExternBlock);
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;
