@@ -28,7 +28,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.1.159",
+ "compiler_builtins 0.1.161",
  "core",
 ]
 
@@ -61,19 +61,19 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.159"
+version = "0.1.160"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6376049cfa92c0aa8b9ac95fae22184b981c658208d4ed8a1dc553cd83612895"
 dependencies = [
- "cc",
- "panic-handler",
  "rustc-std-workspace-core",
 ]
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.160"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6376049cfa92c0aa8b9ac95fae22184b981c658208d4ed8a1dc553cd83612895"
+version = "0.1.161"
 dependencies = [
+ "cc",
+ "panic-handler",
  "rustc-std-workspace-core",
 ]
 
@@ -208,7 +208,7 @@ name = "panic_abort"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "compiler_builtins 0.1.159",
+ "compiler_builtins 0.1.161",
  "core",
  "libc",
 ]
@@ -219,7 +219,7 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "cfg-if",
- "compiler_builtins 0.1.159",
+ "compiler_builtins 0.1.161",
  "core",
  "libc",
  "unwind",
@@ -339,7 +339,7 @@ dependencies = [
  "addr2line",
  "alloc",
  "cfg-if",
- "compiler_builtins 0.1.159",
+ "compiler_builtins 0.1.161",
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
@@ -408,7 +408,7 @@ name = "unwind"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "compiler_builtins 0.1.159",
+ "compiler_builtins 0.1.161",
  "core",
  "libc",
  "unwinding",
