@@ -284,10 +284,8 @@ dependencies = [
 [[package]]
 name = "rustc-demangle"
 version = "0.1.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
+source = "git+https://github.com/tgross35/rustc-demangle.git?branch=no-compiler-builtins#384a09b4b6e559988f1638e5b2ff4194b0342e61"
 dependencies = [
- "compiler_builtins 0.1.160 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core",
 ]
 
@@ -362,7 +360,6 @@ name = "std_detect"
 version = "0.1.5"
 dependencies = [
  "cfg-if",
- "compiler_builtins 0.1.160 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -390,11 +387,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-width"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
+version = "0.1.7"
+source = "git+https://github.com/tgross35/unicode-width.git?branch=no-compiler-builtins#363d6352dbb9701acbf04ca4792bb2f0a0a9ed61"
 dependencies = [
- "compiler_builtins 0.1.160 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core",
  "rustc-std-workspace-std",
 ]
