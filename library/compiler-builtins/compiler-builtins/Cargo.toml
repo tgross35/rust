@@ -19,7 +19,7 @@ test = false
 [dependencies]
 # For more information on this dependency see
 # https://github.com/rust-lang/rust/tree/master/library/rustc-std-workspace-core
-core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+# core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
 
 [build-dependencies]
 cc = { optional = true, version = "1.0" }
@@ -53,7 +53,8 @@ mem = []
 mangled-names = []
 
 # Only used in the compiler's build system
-rustc-dep-of-std = ["compiler-builtins", "dep:core"]
+# rustc-dep-of-std = ["compiler-builtins", "dep:core"]
+rustc-dep-of-std = ["compiler-builtins"]
 
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`

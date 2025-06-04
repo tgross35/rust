@@ -63,7 +63,6 @@ version = "0.1.160"
 dependencies = [
  "cc",
  "panic-handler",
- "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -314,6 +313,7 @@ dependencies = [
 name = "rustc-std-workspace-core"
 version = "1.99.0"
 dependencies = [
+ "compiler_builtins 0.1.160",
  "core",
 ]
 
