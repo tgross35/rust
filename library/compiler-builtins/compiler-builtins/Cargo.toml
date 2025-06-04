@@ -9,7 +9,7 @@ homepage = "https://github.com/rust-lang/compiler-builtins"
 documentation = "https://docs.rs/compiler_builtins"
 edition = "2021"
 description = "Compiler intrinsics used by the Rust compiler."
-links = "compiler-rt"
+# links = "compiler-rt"
 
 [lib]
 bench = false
