@@ -366,6 +366,7 @@ name = "std_detect"
 version = "0.1.5"
 dependencies = [
  "cfg-if",
+ "compiler_builtins 0.1.160",
  "libc",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
