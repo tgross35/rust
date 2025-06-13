@@ -28,7 +28,7 @@ fn run_tests(extra_args: &[&str], expected_file: &str) {
         .actual_text("stdout", test_stdout)
         .normalize(r#"\btime="[0-9.]+""#, r#"time="$$TIME""#)
         .normalize(
-            r"thread '(?P<name>.*?)' \(0x[[:xdigit:]]+\) panicked",
+            r"thread '(?P<name>.*?)' \(\d+\) panicked",
             "thread '$name' ($$TID) panicked",
         )
         .run();
