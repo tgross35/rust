@@ -1,6 +1,6 @@
-# NOTE: Keep this in sync with the manifest at `../rustc-std-workspace-compiler-builtins`
-#
-# Manifest for the main `compiler-builtins` crate that can be built outside of
+# NOTE: Keep this in sync with the manifest at `../compiler-builtins`
+# 
+# MAnifest for the main `compiler-builtins` crate that can be built outside of
 # the standard library workspace.
 
 [package]
@@ -8,18 +8,21 @@ authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
 version = "0.1.160"
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
-readme = "README.md"
-repository = "https://github.com/rust-lang/compiler-builtins"
-homepage = "https://github.com/rust-lang/compiler-builtins"
-documentation = "https://docs.rs/compiler_builtins"
 edition = "2024"
 description = "Compiler intrinsics used by the Rust compiler."
 links = "compiler-rt"
 
+build = "../compiler-builtins/build.rs"
+include = ["../compiler-builtins/src"]
+
 [lib]
+path = "../compiler-builtins/src/lib.rs"
 bench = false
 doctest = false
 test = false
+
+[dependencies]
+core = { path = "../../core" }
 
 [build-dependencies]
 cc = { optional = true, version = "1.2" }
@@ -52,6 +55,9 @@ mangled-names = []
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`
 unstable-public-internals = []
+
+# Only used in the compiler's build system
+rustc-dep-of-std = ["compiler-builtins"]
 
 [lints.rust]
 # The cygwin config can be dropped after our benchmark toolchain is bumped
