@@ -37,6 +37,9 @@ struct SequenceRepetition {
     kleene: KleeneToken,
     /// The number of `Match`s that appear in the sequence (and subsequences)
     num_captures: usize,
+    /// If a named capture group
+    name: Option<Ident>,
+    name_span: Option<Span>,
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]

@@ -1,0 +1,18 @@
+error: duplicate matcher binding
+  --> $DIR/named-groups-validation.rs:5:9
+   |
+LL |     ($a($a:ident)*) => {};
+   |       - ^^^^^^^^ duplicate binding
+   |       |
+   |       previous binding
+
+error: duplicate matcher binding
+  --> $DIR/named-groups-validation.rs:7:16
+   |
+LL |     ($a(foo)* $a(bar)*) => {};
+   |       -        ^ duplicate binding
+   |       |
+   |       previous binding
+
+error: aborting due to 2 previous errors
+

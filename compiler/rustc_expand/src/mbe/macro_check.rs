@@ -280,13 +280,29 @@ fn check_binders(
             }
         }
         // `MetaVarExpr` can not appear in the LHS of a macro arm
-        TokenTree::MetaVarExpr(..) => {}
+        TokenTree::MetaVarExpr(..) => unreachable!(),
         TokenTree::Delimited(.., ref del) => {
             for tt in &del.tts {
                 check_binders(psess, node_id, tt, macros, binders, ops, guar);
             }
         }
         TokenTree::Sequence(_, ref seq) => {
+            if let Some(name) = seq.name {
+                let name = MacroRulesNormalizedIdent::new(name);
+                let span = seq.name_span.unwrap();
+                if let Some(prev_info) = get_binder_info(macros, binders, name) {
+                    // Duplicate binders at the top-level macro definition are errors. The lint is only
+                    // for nested macro definitions.
+                    *guar =
+                        Some(psess.dcx().emit_err(errors::DuplicateMatcherBinding {
+                            span,
+                            prev: prev_info.span,
+                        }));
+                } else {
+                    binders.insert(name, BinderInfo { span, ops: ops.into() });
+                }
+            };
+
             let ops = ops.push(seq.kleene);
             for tt in &seq.tts {
                 check_binders(psess, node_id, tt, macros, binders, &ops, guar);

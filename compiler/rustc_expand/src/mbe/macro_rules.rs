@@ -417,6 +417,8 @@ pub fn compile_declarative_macro(
                 )),
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, span),
                 num_captures: 2,
+                name: None,
+                name_span: None,
             },
         ),
         // to phase into semicolon-termination instead of semicolon-separation
@@ -430,6 +432,8 @@ pub fn compile_declarative_macro(
                 separator: None,
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, span),
                 num_captures: 0,
+                name: None,
+                name_span: None,
             },
         ),
     ];

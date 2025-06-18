@@ -122,6 +122,11 @@ pub(super) fn parse(
                 NonterminalKind::Ident
             });
             result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
+        } else if let Some(peek) = iter.peek()
+            && let tokenstream::TokenTree::Delimited(_, _, Delimiter::Parenthesis, _ts) = peek
+        {
+
+            // && let Token { kind: token::Colon, span: colon_span } = token {
         } else {
             // Whether it's none or some other tree, it doesn't belong to
             // the current meta variable, returning the original span.
@@ -253,19 +258,59 @@ fn parse_tree<'a>(
                         if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
                     TokenTree::Sequence(
                         delim_span,
-                        SequenceRepetition { tts: sequence, separator, kleene, num_captures },
+                        SequenceRepetition {
+                            tts: sequence,
+                            separator,
+                            kleene,
+                            num_captures,
+                            name: None,
+                            name_span: None,
+                        },
                     )
                 }
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
-                    let (ident, is_raw) = token.ident().unwrap();
-                    let span = ident.span.with_lo(dollar_span.lo());
-                    if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
-                        TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
+                    // todo: we only need to peek a single token here, is that possible?
+                    if parsing_patterns
+                        && iter.peek().is_some_and(|peek| peek.is_delim_by(Delimiter::Parenthesis))
+                    {
+                        let &tokenstream::TokenTree::Delimited(
+                            delim_span,
+                            _,
+                            Delimiter::Parenthesis,
+                            ref tts,
+                        ) = iter.next().unwrap()
+                        else {
+                            unreachable!();
+                        };
+                        let sequence =
+                            parse(tts, parsing_patterns, sess, node_id, features, edition);
+                        let (separator, kleene) =
+                            parse_sep_and_kleene_op(&mut iter, delim_span.entire(), sess);
+                        // Count the number of captured "names" (i.e., named metavars)
+                        let num_captures =
+                            if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
+                        TokenTree::Sequence(
+                            delim_span,
+                            SequenceRepetition {
+                                tts: sequence,
+                                separator,
+                                kleene,
+                                num_captures,
+                                name: Some(token.ident().unwrap().0),
+                                name_span: Some(token.span),
+                            },
+                        )
                     } else {
-                        TokenTree::MetaVar(span, ident)
+                        let (ident, is_raw) = token.ident().unwrap();
+                        let span = ident.span.with_lo(dollar_span.lo());
+                        if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
+                            TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
+                        } else {
+                            TokenTree::MetaVar(span, ident)
+                        }
                     }
                 }
 

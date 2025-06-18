@@ -97,6 +97,14 @@ impl TokenTree {
             _ => Cow::Borrowed(self),
         }
     }
+
+    /// True if `Delimited` with the specified delimiter
+    pub fn is_delim_by(&self, delim: Delimiter) -> bool {
+        match self {
+            Self::Delimited(_, _, d, _) if *d == delim => true,
+            _ => false,
+        }
+    }
 }
 
 impl<CTX> HashStable<CTX> for TokenStream
