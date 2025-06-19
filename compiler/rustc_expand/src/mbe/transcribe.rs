@@ -545,28 +545,32 @@ fn metavar_expr_concat<'tx>(
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
     for element in elements.into_iter() {
-        let symbol = match element {
-            MetaVarExprConcatElem::Ident(elem) => elem.name,
-            MetaVarExprConcatElem::Literal(elem) => *elem,
+        match element {
+            MetaVarExprConcatElem::Ident(elem) => {
+                concatenated.push_str(elem.name.as_str());
+            }
+            MetaVarExprConcatElem::Literal(elem) => {
+                concatenated.push_str(elem.as_str());
+            }
             MetaVarExprConcatElem::Var(ident) => {
                 match matched_from_ident(dcx, *ident, tscx.interp)? {
                     NamedMatch::MatchedSeq(named_matches) => {
-                        let Some((curr_idx, _)) = tscx.repeats.last() else {
-                            return Err(dcx.struct_span_err(dspan.entire(), "invalid syntax"));
-                        };
-                        match &named_matches[*curr_idx] {
-                            // FIXME(c410-f3r) Nested repetitions are unimplemented
-                            MatchedSeq(_) => unimplemented!(),
-                            MatchedSingle(pnr) => extract_symbol_from_pnr(dcx, pnr, ident.span)?,
-                        }
+                        concat_nested(
+                            tscx,
+                            &mut concatenated,
+                            0,
+                            ident.span,
+                            &named_matches,
+                            dspan,
+                        )?;
                     }
                     NamedMatch::MatchedSingle(pnr) => {
-                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                        concatenated
+                            .push_str(extract_symbol_from_pnr(dcx, pnr, ident.span)?.as_str());
                     }
                 }
             }
-        };
-        concatenated.push_str(symbol.as_str());
+        }
     }
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
@@ -577,7 +581,6 @@ fn metavar_expr_concat<'tx>(
         ));
     }
     tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
-
     // The current implementation marks the span as coming from the macro regardless of
     // contexts of the concatenated identifiers but this behavior may change in the
     // future.
@@ -585,6 +588,29 @@ fn metavar_expr_concat<'tx>(
         Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
         Spacing::Alone,
     ))
+}
+
+fn concat_nested<'tx>(
+    tscx: &TranscrCtx<'tx, '_>,
+    concatenated: &mut String,
+    depth: usize,
+    ident_span: Span,
+    named_matches: &[NamedMatch],
+    dspan: DelimSpan,
+) -> PResult<'tx, ()> {
+    let dcx = tscx.psess.dcx();
+    let Some((curr_idx, _)) = tscx.repeats.get(depth) else {
+        return Err(dcx.struct_span_err(dspan.entire(), "invalid syntax"));
+    };
+    match &named_matches[*curr_idx] {
+        MatchedSeq(named_matches) => {
+            concat_nested(tscx, concatenated, depth + 1, ident_span, &named_matches, dspan)?;
+        }
+        MatchedSingle(pnr) => {
+            concatenated.push_str(extract_symbol_from_pnr(dcx, pnr, ident_span)?.as_str());
+        }
+    }
+    Ok(())
 }
 
 /// Store the metavariable span for this original span into a side table.
