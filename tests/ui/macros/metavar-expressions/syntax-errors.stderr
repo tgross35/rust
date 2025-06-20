@@ -52,11 +52,13 @@ error: meta-variable expression parameter must be wrapped in parentheses
 LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
    |                                 ^^^^^
 
-error: expected identifier, found `123`
+error: expected an identifier
   --> $DIR/syntax-errors.rs:54:23
    |
 LL |     () => { ${ignore($123)} }
-   |                       ^^^ help: try removing `123`
+   |                       ^^^ not a valid identifier
+   |
+   = note: `ignore` takes a metavariable argument
 
 error: unexpected token: a
   --> $DIR/syntax-errors.rs:66:19
@@ -202,23 +204,32 @@ error: unrecognized meta-variable expression
 LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
    |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
 
-error: expected identifier or string literal
+error: expected an identifier
   --> $DIR/syntax-errors.rs:38:14
    |
 LL |     () => { ${} };
    |              ^^
+   |
+   = note: expected a metavariable expression name: `${expr( /* ... */ )}`
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected identifier, found `"hi"`
+error: expected an identifier
   --> $DIR/syntax-errors.rs:44:17
    |
 LL |      () => { ${ "hi" } };
-   |                 ^^^^ help: try removing `"hi"`
+   |                 ^^^^ not a valid identifier
+   |
+   = note: expected a metavariable expression name: `${expr( /* ... */ )}`
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected identifier or string literal
+error: expected an identifier
   --> $DIR/syntax-errors.rs:60:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ {} } };
-   |                                 ^^
+   |                                 ^^ not a valid identifier
+   |
+   = note: expected a metavariable expression name: `${expr( /* ... */ )}`
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
 error: aborting due to 25 previous errors
 
