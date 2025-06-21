@@ -5,13 +5,10 @@
 macro_rules! syntax_errors {
     ($ex:expr) => {
         ${concat()}
-        //~^ ERROR `concat` must have at least two elements
+        //~^ ERROR requires at least one argument
 
         ${concat(aaaa)}
-        //~^ ERROR `concat` must have at least two elements
-
         ${concat(aaaa,)}
-        //~^ ERROR `concat` must have at least two elements
 
         ${concat(_, aaaa)}
 
@@ -19,10 +16,9 @@ macro_rules! syntax_errors {
         //~^ ERROR expected comma
 
         ${concat($ex)}
-        //~^ ERROR `concat` must have at least two elements
+        //~^ ERROR metavariables of `${concat(..)}` must be of type
 
         ${concat($ex, aaaa)}
-        //~^ ERROR metavariables of `${concat(..)}` must be of type
 
         ${concat($ex, aaaa 123)}
         //~^ ERROR expected comma

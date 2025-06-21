@@ -498,6 +498,14 @@ mod metavar_exprs {
     use super::*;
 
     #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_concat_empty)]
+    pub(crate) struct MveConcatEmpty {
+        #[primary_span]
+        pub span: Span,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(expand_mve_concat_invalid)]
     pub(crate) struct MveConcatInvalid {
         #[primary_span]

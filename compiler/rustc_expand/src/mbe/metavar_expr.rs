@@ -271,11 +271,12 @@ fn parse_concat<'psess>(
             return Err(psess.dcx().struct_span_err(outer_span, "expected comma"));
         }
     }
-    if result.len() < 2 {
-        return Err(psess
-            .dcx()
-            .struct_span_err(expr_ident_span, "`concat` must have at least two elements"));
+
+    if result.is_empty() {
+        let err = errors::MveConcatEmpty { span: expr_ident_span };
+        return Err(psess.dcx().create_err(err));
     }
+
     Ok(MetaVarExpr::Concat(result.into()))
 }
 

@@ -133,6 +133,10 @@ expand_module_multiple_candidates =
 expand_must_repeat_once =
     this must repeat at least once
 
+expand_mve_concat_empty =
+    `{"${concat(..)}"}` requires at least one argument
+    .note = constructed identifiers must not be empty
+
 expand_mve_concat_invalid =
     invalid item within a `{"${concat(...)}"}` expression
     .expr_ident = expanding this `concat(...)` expression
