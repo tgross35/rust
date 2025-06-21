@@ -148,6 +148,11 @@ expand_mve_concat_invalid =
     .unexpected_group = todo
     .hi_label = todo
 
+expand_mve_concat_invalid_output =
+    `{"${concat(..)}"}` constructed an invalid identifier
+    .label = failed due to the input here
+    .note = expanding this metavariable
+
 expand_mve_expected_ident =
     expected an identifier
     .not_ident = not a valid identifier

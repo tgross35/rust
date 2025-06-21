@@ -41,7 +41,7 @@ macro_rules! dollar_sign_without_referenced_ident {
 macro_rules! starting_number {
     ($ident:ident) => {{
         let ${concat("1", $ident)}: () = ();
-        //~^ ERROR `${concat(..)}` is not generating a valid identifier
+        //~^ ERROR `${concat(..)}` constructed an invalid identifier
     }};
 }
 
@@ -82,7 +82,7 @@ macro_rules! ending_invalid_unicode {
 macro_rules! empty {
     () => {{
         let ${concat("", "")}: () = ();
-        //~^ ERROR `${concat(..)}` is not generating a valid identifier
+        //~^ ERROR `${concat(..)}` constructed an invalid identifier
     }};
 }
 
@@ -116,13 +116,13 @@ macro_rules! unsupported_literals {
 macro_rules! bad_literal_string {
     ($literal:literal) => {
         const ${concat(_foo, $literal)}: () = ();
-        //~^ ERROR `${concat(..)}` is not generating a valid identifier
-        //~| ERROR `${concat(..)}` is not generating a valid identifier
-        //~| ERROR `${concat(..)}` is not generating a valid identifier
-        //~| ERROR `${concat(..)}` is not generating a valid identifier
-        //~| ERROR `${concat(..)}` is not generating a valid identifier
-        //~| ERROR `${concat(..)}` is not generating a valid identifier
-        //~| ERROR `${concat(..)}` is not generating a valid identifier
+        //~^ ERROR `${concat(..)}` constructed an invalid identifier
+        //~| ERROR `${concat(..)}` constructed an invalid identifier
+        //~| ERROR `${concat(..)}` constructed an invalid identifier
+        //~| ERROR `${concat(..)}` constructed an invalid identifier
+        //~| ERROR `${concat(..)}` constructed an invalid identifier
+        //~| ERROR `${concat(..)}` constructed an invalid identifier
+        //~| ERROR `${concat(..)}` constructed an invalid identifier
     }
 }
 

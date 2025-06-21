@@ -7,7 +7,7 @@ use rustc_lexer::is_id_continue;
 use rustc_macros::{Decodable, Encodable};
 use rustc_session::errors::create_lit_error;
 use rustc_session::parse::ParseSess;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span};
 
 use crate::errors::{self, MveConcatInvalidReason, MveExpectedIdentContext};
 
@@ -110,7 +110,7 @@ impl MetaVarExpr {
         match self {
             MetaVarExpr::Concat(elems) => {
                 for elem in elems {
-                    if let MetaVarExprConcatElem::Var(ident) = elem {
+                    if let MetaVarExprConcatElem::Var { ident, .. } = elem {
                         aux = cb(aux, ident)
                     }
                 }
@@ -166,14 +166,11 @@ fn iter_span(iter: &TokenStreamIter<'_>) -> Option<Span> {
 /// (`${concat("foo", "bar")}`) or adhoc identifiers (`${concat(foo, bar)}`).
 #[derive(Debug, Decodable, Encodable, PartialEq)]
 pub(crate) enum MetaVarExprConcatElem {
-    /// Identifier WITHOUT a preceding dollar sign, which means that this identifier should be
-    /// interpreted as a literal.
-    Ident(String),
-    /// For example, a number or a string.
-    Literal(Symbol),
+    /// Any non-metavar argument; literals or identifiers (without a preceding `$`).
+    Inline { value: String, span: Span },
     /// Identifier WITH a preceding dollar sign, which means that this identifier should be
     /// expanded and interpreted as a variable.
-    Var(Ident),
+    Var { ident: Ident, span: Span },
 }
 
 /// Parse a meta-variable `concat` expression: `concat($metavar, ident, ...)`.
@@ -219,7 +216,7 @@ fn parse_concat<'psess>(
             };
 
             // Variables get passed untouched
-            MetaVarExprConcatElem::Var(ident)
+            MetaVarExprConcatElem::Var { ident, span: token.span }
         } else if let TokenKind::Literal(lit) = token.kind {
             // Preprocess with `from_token_lit` to handle unescaping, float / int literal suffix
             // stripping.
@@ -253,12 +250,12 @@ fn parse_concat<'psess>(
                 return make_err(MveConcatInvalidReason::InvalidIdent);
             }
 
-            MetaVarExprConcatElem::Ident(s)
+            MetaVarExprConcatElem::Inline { span: token.span, value: s }
         } else if let Some((elem, is_raw)) = token.ident() {
             if is_raw == IdentIsRaw::Yes {
                 return make_err(MveConcatInvalidReason::RawIdentifier);
             }
-            MetaVarExprConcatElem::Ident(elem.as_str().to_string())
+            MetaVarExprConcatElem::Inline { span: token.span, value: elem.as_str().to_string() }
         } else {
             return make_err(MveConcatInvalidReason::UnsupportedInput);
         };

@@ -541,6 +541,17 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
+    #[diag(expand_mve_concat_invalid_output)]
+    pub(crate) struct MveConcatInvalidOutput {
+        #[primary_span]
+        pub span: Span,
+        // #[label]
+        // pub src_span: Span,
+        #[note]
+        pub metavar_span: Option<Span>,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(expand_mve_expected_ident)]
     pub(crate) struct MveExpectedIdent {
         #[primary_span]

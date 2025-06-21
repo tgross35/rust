@@ -17,7 +17,7 @@ use rustc_span::{
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
-    CountRepetitionMisplaced, MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar,
+    self, CountRepetitionMisplaced, MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::NamedMatch;
@@ -544,12 +544,12 @@ fn metavar_expr_concat<'tx>(
 ) -> PResult<'tx, TokenTree> {
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
+    let mut seg_map = Vec::new();
     for element in elements.into_iter() {
         let tmp_sym;
-        let sym_str = match element {
-            MetaVarExprConcatElem::Ident(elem) => elem.as_str(),
-            MetaVarExprConcatElem::Literal(elem) => elem.as_str(),
-            MetaVarExprConcatElem::Var(ident) => {
+        let (src_span, mv_span, sym_str) = match element {
+            MetaVarExprConcatElem::Inline { span, value } => (*span, None, value.as_str()),
+            MetaVarExprConcatElem::Var { ident, span: mv_span } => {
                 match matched_from_ident(dcx, *ident, tscx.interp)? {
                     NamedMatch::MatchedSeq(named_matches) => {
                         let Some((curr_idx, _)) = tscx.repeats.last() else {
@@ -559,28 +559,30 @@ fn metavar_expr_concat<'tx>(
                             // FIXME(c410-f3r) Nested repetitions are unimplemented
                             MatchedSeq(_) => unimplemented!(),
                             MatchedSingle(pnr) => {
-                                tmp_sym = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
-                                tmp_sym.as_str()
+                                let src_span;
+                                (tmp_sym, src_span) =
+                                    extract_symbol_from_pnr(tscx, pnr, ident.span)?;
+                                (src_span, Some(*mv_span), tmp_sym.as_str())
                             }
                         }
                     }
                     NamedMatch::MatchedSingle(pnr) => {
-                        tmp_sym = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
-                        tmp_sym.as_str()
+                        let src_span;
+                        (tmp_sym, src_span) = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
+                        (src_span, Some(*mv_span), tmp_sym.as_str())
                     }
                 }
             }
         };
+
         concatenated.push_str(sym_str);
+        // Track a map of `end_pos -> span` so if we have an error, we can point at the exact
+        // place the invalid identifier came from.
+        seg_map.push((concatenated.len(), src_span, mv_span));
     }
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
-    if !rustc_lexer::is_ident(symbol.as_str()) {
-        return Err(dcx.struct_span_err(
-            concatenated_span,
-            "`${concat(..)}` is not generating a valid identifier",
-        ));
-    }
+    validate_new_ident(dcx, symbol.as_str(), concatenated_span, &seg_map)?;
     tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
 
     // The current implementation marks the span as coming from the macro regardless of
@@ -590,6 +592,36 @@ fn metavar_expr_concat<'tx>(
         Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
         Spacing::Alone,
     ))
+}
+
+fn validate_new_ident<'dx>(
+    dcx: DiagCtxtHandle<'dx>,
+    ident: &str,
+    concatenated_span: Span,
+    seg_map: &[(usize, Span, Option<Span>)],
+) -> PResult<'dx, ()> {
+    if rustc_lexer::is_ident(ident) {
+        return Ok(());
+    }
+
+    for (end, src_span, mv_span) in seg_map.iter().copied() {
+        let seg = &ident[..end];
+        if rustc_lexer::is_ident(seg) {
+            continue;
+        }
+
+        let err = errors::MveConcatInvalidOutput {
+            // concat is not generating a valid identifier
+            span: concatenated_span,
+            // note: from the value here
+            // src_span,
+            // note: expanding this metavariable
+            metavar_span: mv_span,
+        };
+        return Err(dcx.create_err(err));
+    }
+
+    unreachable!("eventually the whole string is checked");
 }
 
 /// Store the metavariable span for this original span into a side table.
@@ -910,37 +942,37 @@ fn extract_symbol_from_pnr<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     pnr: &ParseNtResult,
     span_err: Span,
-) -> PResult<'tx, Symbol> {
+) -> PResult<'tx, (Symbol, Span)> {
     let dcx = tscx.psess.dcx();
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
                 Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
             } else {
-                Ok(nt_ident.name)
+                Ok((nt_ident.name, nt_ident.span))
             }
         }
         ParseNtResult::Tt(TokenTree::Token(
-            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
+            Token { kind: TokenKind::Ident(symbol, is_raw), span },
             _,
         )) => {
             if let IdentIsRaw::Yes = is_raw {
                 Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
             } else {
-                Ok(*symbol)
+                Ok((*symbol, *span))
             }
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {
                 kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
-                ..
+                span,
             },
             _,
-        )) => Ok(*symbol),
+        )) => Ok((*symbol, *span)),
         ParseNtResult::Literal(expr)
             if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
         {
-            Ok(*symbol)
+            Ok((*symbol, expr.span))
         }
         _ => Err(dcx
             .struct_err(

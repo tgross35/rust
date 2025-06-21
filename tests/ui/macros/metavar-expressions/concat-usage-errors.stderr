@@ -214,7 +214,7 @@ error: variable `foo` is not recognized in meta-variable expression
 LL |         const ${concat(FOO, $foo)}: i32 = 2;
    |                              ^^^
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:43:14
    |
 LL |         let ${concat("1", $ident)}: () = ();
@@ -258,7 +258,7 @@ LL |     unsupported_literals!(_abc);
    |
    = note: this error originates in the macro `unsupported_literals` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:84:14
    |
 LL |         let ${concat("", "")}: () = ();
@@ -269,7 +269,7 @@ LL |     empty!();
    |
    = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -278,9 +278,14 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("\u{00BD}");
    |     ------------------------------- in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -289,9 +294,14 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("\x41");
    |     --------------------------- in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -300,9 +310,14 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("🤷");
    |     ------------------------- in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -311,9 +326,14 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("d[-_-]b");
    |     ------------------------------ in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -322,9 +342,14 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("-1");
    |     ------------------------- in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -333,9 +358,14 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("1.0");
    |     -------------------------- in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
+error: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:118:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -344,6 +374,11 @@ LL |         const ${concat(_foo, $literal)}: () = ();
 LL |     bad_literal_string!("'1'");
    |     -------------------------- in this macro invocation
    |
+note: expanding this metavariable
+  --> $DIR/concat-usage-errors.rs:118:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
