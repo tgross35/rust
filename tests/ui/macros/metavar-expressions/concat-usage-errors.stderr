@@ -1,4 +1,4 @@
-error: `${concat(..)}` requires at least one argument
+error[E0806]: `${concat(..)}` requires at least one argument
   --> $DIR/concat-usage-errors.rs:7:11
    |
 LL |         ${concat()}
@@ -18,7 +18,7 @@ error: expected comma
 LL |         ${concat($ex, aaaa 123)}
    |          ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:52:22
    |
 LL |         let ${concat("\u{00BD}", $ident)}: () = ();
@@ -31,7 +31,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat("\u{00BD}", $ident)}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:72:30
    |
 LL |         let ${concat($ident, "\u{00BD}")}: () = ();
@@ -44,7 +44,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat($ident, "\u{00BD}")}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:87:26
    |
 LL |         let ${concat(_a, 1.5)}: () = ();
@@ -58,7 +58,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(_a, 1.5)}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:90:26
    |
 LL |         let ${concat(_a, c"hi")}: () = ();
@@ -72,7 +72,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(_a, c"hi")}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:92:26
    |
 LL |         let ${concat(_a, b"hi")}: () = ();
@@ -86,7 +86,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(_a, b"hi")}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:94:26
    |
 LL |         let ${concat(_a, b'b')}: () = ();
@@ -100,7 +100,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(_a, b'b')}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:96:26
    |
 LL |         let ${concat(_a, b'b')}: () = ();
@@ -114,7 +114,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(_a, b'b')}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:99:30
    |
 LL |         let ${concat($ident, 1.5)}: () = ();
@@ -128,7 +128,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat($ident, 1.5)}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:101:30
    |
 LL |         let ${concat($ident, c"hi")}: () = ();
@@ -142,7 +142,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat($ident, c"hi")}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:103:30
    |
 LL |         let ${concat($ident, b"hi")}: () = ();
@@ -156,7 +156,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat($ident, b"hi")}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:105:30
    |
 LL |         let ${concat($ident, b'b')}: () = ();
@@ -170,7 +170,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat($ident, b'b')}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-usage-errors.rs:107:30
    |
 LL |         let ${concat($ident, b'b')}: () = ();
@@ -192,13 +192,13 @@ LL |         ${concat($ex)}
    |
    = note: currently only string literals are supported
 
-error: variable `foo` is not recognized in meta-variable expression
+error[E0806]: variable `foo` is not recognized in meta-variable expression
   --> $DIR/concat-usage-errors.rs:32:30
    |
 LL |         const ${concat(FOO, $foo)}: i32 = 2;
    |                              ^^^
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:39:14
    |
 LL |         let ${concat("1", $ident)}: () = ();
@@ -242,7 +242,7 @@ LL |     unsupported_literals!(_abc);
    |
    = note: this error originates in the macro `unsupported_literals` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:80:14
    |
 LL |         let ${concat("", "")}: () = ();
@@ -253,7 +253,7 @@ LL |     empty!();
    |
    = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -269,7 +269,7 @@ LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -285,7 +285,7 @@ LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -301,7 +301,7 @@ LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -317,7 +317,7 @@ LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -333,7 +333,7 @@ LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -349,7 +349,7 @@ LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-usage-errors.rs:114:16
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
@@ -437,3 +437,5 @@ LL |         const ${concat(_foo, $tt)}: () = ();
 
 error: aborting due to 37 previous errors
 
+Some errors have detailed explanations: E0806, E0807.
+For more information about an error, try `rustc --explain E0806`.

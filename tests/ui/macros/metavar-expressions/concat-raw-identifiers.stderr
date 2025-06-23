@@ -1,4 +1,4 @@
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-raw-identifiers.rs:28:22
    |
 LL |         let ${concat(r#abc, abc)}: () = ();
@@ -11,7 +11,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(r#abc, abc)}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-raw-identifiers.rs:32:27
    |
 LL |         let ${concat(abc, r#abc)}: () = ();
@@ -24,7 +24,7 @@ help: expanding this `concat(...)` expression
 LL |         let ${concat(abc, r#abc)}: () = ();
    |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-raw-identifiers.rs:35:22
    |
 LL |         let ${concat(r#abc, r#abc)}: () = ();
@@ -114,3 +114,4 @@ LL |     no_params!();
 
 error: aborting due to 14 previous errors
 
+For more information about this error, try `rustc --explain E0807`.

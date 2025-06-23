@@ -499,14 +499,14 @@ mod metavar_exprs {
 
     #[derive(Diagnostic)]
     #[note]
-    #[diag(expand_mve_concat_empty)]
+    #[diag(expand_mve_concat_empty, code = E0806)]
     pub(crate) struct MveConcatEmpty {
         #[primary_span]
         pub span: Span,
     }
 
     #[derive(Diagnostic)]
-    #[diag(expand_mve_concat_invalid)]
+    #[diag(expand_mve_concat_invalid, code = E0807)]
     pub(crate) struct MveConcatInvalid {
         #[primary_span]
         pub span: Span,
@@ -549,7 +549,7 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
-    #[diag(expand_mve_concat_invalid_output)]
+    #[diag(expand_mve_concat_invalid_output, code = E0807)]
     pub(crate) struct MveConcatInvalidOutput {
         #[primary_span]
         pub span: Span,
@@ -560,7 +560,7 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
-    #[diag(expand_mve_expected_ident)]
+    #[diag(expand_mve_expected_ident, code = E0806)]
     pub(crate) struct MveExpectedIdent {
         #[primary_span]
         pub span: Span,
@@ -584,7 +584,7 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
-    #[diag(expand_mve_extra_tokens_in_braces)]
+    #[diag(expand_mve_extra_tokens_in_braces, code = E0806)]
     pub(crate) struct MveExtraTokensInBraces {
         #[primary_span]
         #[suggestion(code = "", applicability = "machine-applicable")]
@@ -593,7 +593,7 @@ mod metavar_exprs {
 
     #[derive(Diagnostic)]
     #[note]
-    #[diag(expand_mve_extra_tokens_in_expr)]
+    #[diag(expand_mve_extra_tokens_in_expr, code = E0806)]
     pub(crate) struct MveExtraTokensInExpr {
         #[primary_span]
         #[suggestion(code = "", applicability = "machine-applicable")]
@@ -607,7 +607,7 @@ mod metavar_exprs {
 
     #[derive(Diagnostic)]
     #[note]
-    #[diag(expand_mve_missing_paren)]
+    #[diag(expand_mve_missing_paren, code = E0806)]
     pub(crate) struct MveMissingParen {
         #[primary_span]
         pub span: Span,
@@ -617,7 +617,7 @@ mod metavar_exprs {
 
     #[derive(Diagnostic)]
     #[note]
-    #[diag(expand_mve_unrecognized_expr)]
+    #[diag(expand_mve_unrecognized_expr, code = E0806)]
     pub(crate) struct MveUnrecognizedExpr {
         #[primary_span]
         #[label]
@@ -626,7 +626,7 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
-    #[diag(expand_mve_unrecognized_var)]
+    #[diag(expand_mve_unrecognized_var, code = E0806)]
     pub(crate) struct MveUnrecognizedVar {
         #[primary_span]
         pub span: Span,

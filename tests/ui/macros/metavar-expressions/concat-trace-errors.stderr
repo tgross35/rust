@@ -1,4 +1,4 @@
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-trace-errors.rs:11:24
    |
 LL |         ${concat("hi", " bye ")};
@@ -11,7 +11,7 @@ help: expanding this `concat(...)` expression
 LL |         ${concat("hi", " bye ")};
    |           ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-trace-errors.rs:14:24
    |
 LL |         ${concat("hi", "-", "bye")};
@@ -24,7 +24,7 @@ help: expanding this `concat(...)` expression
 LL |         ${concat("hi", "-", "bye")};
    |           ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error[E0807]: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-trace-errors.rs:17:22
    |
 LL |         ${concat($a, "-")};
@@ -37,7 +37,7 @@ help: expanding this `concat(...)` expression
 LL |         ${concat($a, "-")};
    |           ^^^^^^
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-trace-errors.rs:25:24
    |
 LL |         const _: () = ${concat("hi", $a, "bye")};
@@ -53,7 +53,7 @@ LL |         const _: () = ${concat("hi", $a, "bye")};
    |                                       ^
    = note: this error originates in the macro `post_expansion` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` constructed an invalid identifier
+error[E0807]: `${concat(..)}` constructed an invalid identifier
   --> $DIR/concat-trace-errors.rs:36:24
    |
 LL |         const _: () = ${concat($a, $b, $c, $d, $e)};
@@ -71,3 +71,4 @@ LL |         const _: () = ${concat($a, $b, $c, $d, $e)};
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0807`.

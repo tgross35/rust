@@ -34,7 +34,7 @@ error: only unsuffixes integer literals are supported in meta-variable expressio
 LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
    |                                 ^^^^^
 
-error: expected `(`
+error[E0806]: expected `(`
   --> $DIR/syntax-errors.rs:27:38
    |
 LL |     ( $( $i:ident ),* ) => { ${ count } };
@@ -42,7 +42,7 @@ LL |     ( $( $i:ident ),* ) => { ${ count } };
    |
    = note: metavariable expressions use function-like parentheses syntax
 
-error: expected `(`
+error[E0806]: expected `(`
   --> $DIR/syntax-errors.rs:44:38
    |
 LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
@@ -50,7 +50,7 @@ LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
    |
    = note: metavariable expressions use function-like parentheses syntax
 
-error: expected an identifier
+error[E0806]: expected an identifier
   --> $DIR/syntax-errors.rs:49:23
    |
 LL |     () => { ${ignore($123)} }
@@ -58,7 +58,7 @@ LL |     () => { ${ignore($123)} }
    |
    = note: `ignore` takes a metavariable argument
 
-error: expected `(`
+error[E0806]: expected `(`
   --> $DIR/syntax-errors.rs:54:38
    |
 LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
@@ -66,7 +66,7 @@ LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
    |
    = note: metavariable expressions use function-like parentheses syntax
 
-error: expected an identifier
+error[E0806]: expected an identifier
   --> $DIR/syntax-errors.rs:59:23
    |
 LL |     () => { ${ignore($123)} }
@@ -74,13 +74,13 @@ LL |     () => { ${ignore($123)} }
    |
    = note: `ignore` takes a metavariable argument
 
-error: unexpected trailing tokens in metavariable expression braces
+error[E0806]: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:71:19
    |
 LL |         ${count() a b c}
    |                   ^^^^^ help: try removing these tokens
 
-error: unexpected trailing tokens in metavariable expression
+error[E0806]: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:73:20
    |
 LL |         ${count($i a b c)}
@@ -90,7 +90,7 @@ LL |         ${count($i a b c)}
    |
    = note: the `count` metavariable expression takes up to 2 arguments
 
-error: unexpected trailing tokens in metavariable expression
+error[E0806]: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:75:23
    |
 LL |         ${count($i, 1 a b c)}
@@ -100,19 +100,19 @@ LL |         ${count($i, 1 a b c)}
    |
    = note: the `count` metavariable expression takes up to 2 arguments
 
-error: unexpected trailing tokens in metavariable expression braces
+error[E0806]: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:77:21
    |
 LL |         ${count($i) a b c}
    |                     ^^^^^ help: try removing these tokens
 
-error: unexpected trailing tokens in metavariable expression braces
+error[E0806]: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:80:22
    |
 LL |         ${ignore($i) a b c}
    |                      ^^^^^ help: try removing these tokens
 
-error: unexpected trailing tokens in metavariable expression
+error[E0806]: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:82:21
    |
 LL |         ${ignore($i a b c)}
@@ -122,13 +122,13 @@ LL |         ${ignore($i a b c)}
    |
    = note: the `ignore` metavariable expression takes up to 1 arguments
 
-error: unexpected trailing tokens in metavariable expression braces
+error[E0806]: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:85:19
    |
 LL |         ${index() a b c}
    |                   ^^^^^ help: try removing these tokens
 
-error: unexpected trailing tokens in metavariable expression
+error[E0806]: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:87:19
    |
 LL |         ${index(1 a b c)}
@@ -138,13 +138,13 @@ LL |         ${index(1 a b c)}
    |
    = note: the `index` metavariable expression takes up to 2 arguments
 
-error: unexpected trailing tokens in metavariable expression braces
+error[E0806]: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:90:19
    |
 LL |         ${index() a b c}
    |                   ^^^^^ help: try removing these tokens
 
-error: unexpected trailing tokens in metavariable expression
+error[E0806]: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:92:19
    |
 LL |         ${index(1 a b c)}
@@ -178,7 +178,7 @@ error: meta-variables within meta-variable expressions must be referenced using 
 LL |     ( $( $i:ident ),* ) => { ${ ignore() } };
    |                                 ^^^^^^
 
-error: unrecognized metavariable expression
+error[E0806]: unrecognized metavariable expression
   --> $DIR/syntax-errors.rs:123:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
@@ -186,7 +186,7 @@ LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
    |
    = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected an identifier
+error[E0806]: expected an identifier
   --> $DIR/syntax-errors.rs:33:14
    |
 LL |     () => { ${} };
@@ -195,7 +195,7 @@ LL |     () => { ${} };
    = note: expected a metavariable expression name: `${expr( /* ... */ )}`
    = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected an identifier
+error[E0806]: expected an identifier
   --> $DIR/syntax-errors.rs:39:17
    |
 LL |      () => { ${ "hi" } };
@@ -204,7 +204,7 @@ LL |      () => { ${ "hi" } };
    = note: expected a metavariable expression name: `${expr( /* ... */ )}`
    = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected an identifier
+error[E0806]: expected an identifier
   --> $DIR/syntax-errors.rs:65:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ {} } };
@@ -215,3 +215,4 @@ LL |     ( $( $i:ident ),* ) => { ${ {} } };
 
 error: aborting due to 27 previous errors
 
+For more information about this error, try `rustc --explain E0806`.
