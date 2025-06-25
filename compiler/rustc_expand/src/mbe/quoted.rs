@@ -10,7 +10,10 @@ use rustc_span::{Ident, Span, kw, sym};
 
 use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
-use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
+use crate::mbe::{
+    Delimited, KleeneOp, KleeneToken, MetaVarExpr, NamedSequenceRepetition, SequenceRepetition,
+    TokenTree,
+};
 
 pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
     `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
@@ -143,6 +146,13 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
     if !features.macro_metavar_expr_concat() {
         let msg = "the `concat` meta-variable expression is unstable";
         feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
+    }
+}
+
+fn maybe_emit_macro_capture_groups_feature(features: &Features, sess: &Session, span: Span) {
+    if !features.macro_capture_groups() {
+        let msg = "named capture groups are unstable";
+        feature_err(sess, sym::macro_capture_groups, span, msg).emit();
     }
 }
 
@@ -284,9 +294,52 @@ fn parse_tree<'a>(
                     }
                     TokenTree::token(token::Dollar, dollar_span2)
                 }
+                Some(tokenstream::TokenTree::Token(
+                    Token { kind: token::Lifetime(sym, is_raw), span },
+                    _,
+                )) => {
+                    next = iter.next();
+                    let Some(tokenstream::TokenTree::Delimited(
+                        delim_span,
+                        _,
+                        Delimiter::Parenthesis,
+                        ref tts,
+                    )) = next
+                    else {
+                        todo!("expected parens");
+                    };
 
+                    maybe_emit_macro_capture_groups_feature(features, sess, delim_span.entire());
+
+                    // TODO: parse the expansion as well as the lhs
+                    // TODO: share logic with separator parsing
+
+                    // If we didn't find a metavar expression above, then we must have a
+                    // repetition sequence in the macro (e.g. `$(pat)*`). Parse the
+                    // contents of the sequence itself
+                    let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
+                    // Get the Kleene operator and optional separator
+                    let (separator, kleene) =
+                        parse_sep_and_kleene_op(&mut iter, delim_span.entire(), sess);
+                    // Count the number of captured "names" (i.e., named metavars)
+                    let num_captures =
+                        if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
+
+                    TokenTree::NamedSequence {
+                        span: *delim_span,
+                        seq: NamedSequenceRepetition {
+                            tts: sequence,
+                            separator,
+                            // TODO: should be optional
+                            kleene: Some(kleene),
+                            num_captures,
+                            name: *sym,
+                        },
+                    }
+                }
                 // `tree` is followed by some other token. This is an error.
                 Some(tokenstream::TokenTree::Token(token, _)) => {
+                    tracing::info!("got {token:?}");
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.dcx().span_err(token.span, msg);

@@ -38,7 +38,7 @@ use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
 use crate::mbe::macro_parser::NamedMatch::*;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::transcribe::transcribe;
-use crate::mbe::{self, KleeneOp, macro_check};
+use crate::mbe::{self, KleeneOp, NamedSequenceRepetition, macro_check};
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -609,12 +609,12 @@ fn check_lhs_nt_follows(
     }
 }
 
-fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
-    if seq.separator.is_some() {
+fn is_empty_token_tree(sess: &Session, separator: Option<Token>, tts: &[mbe::TokenTree]) -> bool {
+    if separator.is_some() {
         false
     } else {
         let mut is_empty = true;
-        let mut iter = seq.tts.iter().peekable();
+        let mut iter = tts.iter().peekable();
         while let Some(tt) = iter.next() {
             match tt {
                 mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. } => {}
@@ -630,9 +630,12 @@ fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
                     let span = t.span.to(now.span);
                     sess.dcx().span_note(span, "doc comments are ignored in matcher position");
                 }
-                mbe::TokenTree::Sequence(_, sub_seq)
-                    if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
-                        || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne) => {}
+                mbe::TokenTree::Sequence(_, SequenceRepetition { kleene, .. })
+                | mbe::TokenTree::NamedSequence {
+                    seq: NamedSequenceRepetition { kleene: Some(kleene), .. },
+                    ..
+                } if (kleene.op == mbe::KleeneOp::ZeroOrMore
+                    || kleene.op == mbe::KleeneOp::ZeroOrOne) => {}
                 _ => is_empty = false,
             }
         }
@@ -682,8 +685,19 @@ fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> Result<(), 
             | TokenTree::MetaVarDecl { .. }
             | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(.., del) => check_lhs_no_empty_seq(sess, &del.tts)?,
+            TokenTree::NamedSequence { span, seq } => {
+                if is_empty_token_tree(sess, seq.separator, &seq.tts) {
+                    let sp = span.entire();
+                    let mut err =
+                        sess.dcx().struct_span_err(sp, "repetition matches empty token tree");
+                    // TODO
+                    // check_redundant_vis_repetition(&mut err, sess, seq, span);
+                    return Err(err.emit());
+                }
+                check_lhs_no_empty_seq(sess, &seq.tts)?
+            }
             TokenTree::Sequence(span, seq) => {
-                if is_empty_token_tree(sess, seq) {
+                if is_empty_token_tree(sess, seq.separator, &seq.tts) {
                     let sp = span.entire();
                     let mut err =
                         sess.dcx().struct_span_err(sp, "repetition matches empty token tree");

@@ -1309,6 +1309,7 @@ symbols! {
         m68k_target_feature,
         macro_at_most_once_rep,
         macro_attributes_in_derive_output,
+        macro_capture_groups,
         macro_concat,
         macro_escape,
         macro_export,

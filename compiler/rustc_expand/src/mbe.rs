@@ -16,7 +16,7 @@ use metavar_expr::MetaVarExpr;
 use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan};
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::{Ident, Span};
+use rustc_span::{Ident, Span, Symbol};
 
 /// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`.
 /// The delimiters are not represented explicitly in the `tts` vector.
@@ -37,6 +37,19 @@ struct SequenceRepetition {
     kleene: KleeneToken,
     /// The number of `Match`s that appear in the sequence (and subsequences)
     num_captures: usize,
+}
+
+#[derive(PartialEq, Encodable, Decodable, Debug)]
+struct NamedSequenceRepetition {
+    /// The sequence of token trees
+    tts: Vec<TokenTree>,
+    /// The optional separator
+    separator: Option<Token>,
+    /// Whether the sequence can be repeated zero (*), or one or more times (+)
+    kleene: Option<KleeneToken>,
+    /// The number of `Match`s that appear in the sequence (and subsequences)
+    num_captures: usize,
+    name: Symbol,
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
@@ -74,6 +87,10 @@ enum TokenTree {
     Delimited(DelimSpan, DelimSpacing, Delimited),
     /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
     Sequence(DelimSpan, SequenceRepetition),
+    NamedSequence {
+        span: DelimSpan,
+        seq: NamedSequenceRepetition,
+    },
     /// e.g., `$var`. The span covers the leading dollar and the ident. (The span within the ident
     /// only covers the ident, e.g. `var`.)
     MetaVar(Span, Ident),
@@ -111,7 +128,8 @@ impl TokenTree {
             | TokenTree::MetaVarDecl { span, .. } => span,
             TokenTree::Delimited(span, ..)
             | TokenTree::MetaVarExpr(span, _)
-            | TokenTree::Sequence(span, _) => span.entire(),
+            | TokenTree::Sequence(span, _)
+            | TokenTree::NamedSequence { span, .. } => span.entire(),
         }
     }
 
