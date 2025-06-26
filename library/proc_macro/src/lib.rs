@@ -37,9 +37,16 @@
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+#[allow(missing_docs)]
+mod backend;
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
-pub mod bridge;
+pub mod bridge {
+    pub use super::backend::bridge::{
+        DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+    };
+    pub use super::backend::{client, server};
+}
 
 mod diagnostic;
 mod escape;

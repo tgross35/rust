@@ -1,16 +1,28 @@
-//! Client-side types.
+//! Interfaces and types representing `proc_macro` as a client.
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::sync::atomic::AtomicU32;
+use std::ops::{Bound, Range};
+use std::sync::Once;
+use std::{fmt, panic};
 
-use super::*;
+use bridge::{Diagnostic, Literal, TokenTree};
+
+// FIXME: we shouldn't use the bridge here
+use super::bridge;
+use super::rpc::{self, DecodeMut, Encode, Reader, Writer};
+use super::support::{self, Buffer, Closure, selfless_reify};
+pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_handles {
     (
         'owned: $($oty:ident,)*
         'interned: $($ity:ident,)*
     ) => {
+        use std::sync::atomic::AtomicU32;
+        use std::mem;
+        use support::Handle;
+
         #[repr(C)]
         #[allow(non_snake_case)]
         pub(super) struct HandleCounters {
@@ -25,7 +37,7 @@ macro_rules! define_client_handles {
 
         $(
             pub(crate) struct $oty {
-                handle: handle::Handle,
+                handle: Handle,
                 // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
                 // way of doing this, but that requires unstable features.
                 // rust-analyzer uses this code and avoids unstable features.
@@ -63,7 +75,7 @@ macro_rules! define_client_handles {
             impl<S> DecodeMut<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty {
-                        handle: handle::Handle::decode(r, s),
+                        handle: Handle::decode(r, s),
                         _marker: PhantomData,
                     }
                 }
@@ -73,7 +85,7 @@ macro_rules! define_client_handles {
         $(
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
             pub(crate) struct $ity {
-                handle: handle::Handle,
+                handle: Handle,
                 // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
                 // way of doing this, but that requires unstable features.
                 // rust-analyzer uses this code and avoids unstable features.
@@ -89,7 +101,7 @@ macro_rules! define_client_handles {
             impl<S> DecodeMut<'_, '_, S> for $ity {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $ity {
-                        handle: handle::Handle::decode(r, s),
+                        handle: Handle::decode(r, s),
                         _marker: PhantomData,
                     }
                 }
@@ -97,7 +109,8 @@ macro_rules! define_client_handles {
         )*
     }
 }
-with_api_handle_types!(define_client_handles);
+
+bridge::with_api_handle_types!(define_client_handles);
 
 // FIXME(eddyb) generate these impls by pattern-matching on the
 // names of methods - also could use the presence of `fn drop`
@@ -131,8 +144,6 @@ impl fmt::Debug for Span {
     }
 }
 
-pub(crate) use super::symbol::Symbol;
-
 macro_rules! define_client_side {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
@@ -143,12 +154,12 @@ macro_rules! define_client_side {
                     let mut buf = bridge.cached_buffer.take();
 
                     buf.clear();
-                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
-                    reverse_encode!(buf; $($arg),*);
+                    bridge::api_tags::Method::$name(bridge::api_tags::$name::$method).encode(&mut buf, &mut ());
+                    bridge::reverse_encode!(buf; $($arg),*);
 
                     buf = bridge.dispatch.call(buf);
 
-                    let r = Result::<_, PanicMessage>::decode(&mut &buf[..], &mut ());
+                    let r = Result::<_, rpc::PanicMessage>::decode(&mut &buf[..], &mut ());
 
                     bridge.cached_buffer = buf;
 
@@ -158,7 +169,8 @@ macro_rules! define_client_side {
         })*
     }
 }
-with_api!(self, self, define_client_side);
+
+bridge::with_api!(self, self, define_client_side);
 
 struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
@@ -166,10 +178,10 @@ struct Bridge<'a> {
     cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: Closure<'a, Buffer, Buffer>,
 
     /// Provided globals for this macro expansion.
-    globals: ExpnGlobals<Span>,
+    globals: bridge::ExpnGlobals<Span>,
 }
 
 impl<'a> !Send for Bridge<'a> {}
@@ -248,7 +260,7 @@ pub(crate) fn is_available() -> bool {
 pub struct Client<I, O> {
     pub(super) handle_counters: &'static HandleCounters,
 
-    pub(super) run: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+    pub(super) run: extern "C" fn(bridge::BridgeConfig<'_>) -> Buffer,
 
     pub(super) _marker: PhantomData<fn(I) -> O>,
 }
@@ -282,10 +294,10 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
-    config: BridgeConfig<'_>,
+    config: bridge::BridgeConfig<'_>,
     f: impl FnOnce(A) -> R,
 ) -> Buffer {
-    let BridgeConfig { input: mut buf, dispatch, force_show_panics, .. } = config;
+    let bridge::BridgeConfig { input: mut buf, dispatch, force_show_panics, .. } = config;
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
@@ -294,7 +306,7 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         Symbol::invalidate_all();
 
         let reader = &mut &buf[..];
-        let (globals, input) = <(ExpnGlobals<Span>, A)>::decode(reader, &mut ());
+        let (globals, input) = <(bridge::ExpnGlobals<Span>, A)>::decode(reader, &mut ());
 
         // Put the buffer we used for input back in the `Bridge` for requests.
         let state = RefCell::new(Bridge { cached_buffer: buf.take(), dispatch, globals });
@@ -316,7 +328,7 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         buf.clear();
         Ok::<_, ()>(output).encode(&mut buf, &mut ());
     }))
-    .map_err(PanicMessage::from)
+    .map_err(rpc::PanicMessage::from)
     .unwrap_or_else(|e| {
         buf.clear();
         Err::<(), _>(e).encode(&mut buf, &mut ());
@@ -332,7 +344,7 @@ impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
             handle_counters: &COUNTERS,
-            run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
+            run: selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
             }),
             _marker: PhantomData,
@@ -346,7 +358,7 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
     ) -> Self {
         Client {
             handle_counters: &COUNTERS,
-            run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
+            run: selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
                     f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
                 })

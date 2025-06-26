@@ -1,3 +1,5 @@
+//! Everything for a bridged backend to `rustc` or `rust-analyzer`.
+//!
 //! Internal interface for communicating between a `proc_macro` client
 //! (a proc macro crate) and a `proc_macro` server (a compiler front-end).
 //!
@@ -9,11 +11,34 @@
 #![deny(unsafe_code)]
 
 use std::hash::Hash;
+use std::marker::PhantomData;
 use std::ops::{Bound, Range};
-use std::sync::Once;
-use std::{fmt, marker, mem, panic, thread};
 
+use super::rpc::{self, Decode, DecodeMut, Encode, Reader, Writer, rpc_encode_decode};
+use super::support::{Buffer, Closure};
 use crate::{Delimiter, Level, Spacing};
+
+// #[allow(unsafe_code)]
+// mod arena;
+// #[allow(unsafe_code)]
+// mod buffer;
+// #[deny(unsafe_code)]
+// pub mod client;
+// #[allow(unsafe_code)]
+// mod closure;
+// #[forbid(unsafe_code)]
+// mod fxhash;
+// #[forbid(unsafe_code)]
+// mod handle;
+// #[macro_use]
+// #[forbid(unsafe_code)]
+// mod rpc;
+// #[allow(unsafe_code)]
+// mod selfless_reify;
+// #[forbid(unsafe_code)]
+// pub mod server;
+// #[allow(unsafe_code)]
+// mod symbol;
 
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
@@ -103,6 +128,8 @@ macro_rules! with_api {
     };
 }
 
+pub(super) use with_api;
+
 // Similar to `with_api`, but only lists the types requiring handles, and they
 // are divided into the two storage categories.
 macro_rules! with_api_handle_types {
@@ -118,13 +145,14 @@ macro_rules! with_api_handle_types {
         }
     };
 }
+pub(crate) use with_api_handle_types;
 
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
 // to match the ordering in `reverse_decode`.
 macro_rules! reverse_encode {
     ($writer:ident;) => {};
     ($writer:ident; $first:ident $(, $rest:ident)*) => {
-        reverse_encode!($writer; $($rest),*);
+        crate::backend::bridge::reverse_encode!($writer; $($rest),*);
         $first.encode(&mut $writer, &mut ());
     }
 }
@@ -134,36 +162,12 @@ macro_rules! reverse_encode {
 macro_rules! reverse_decode {
     ($reader:ident, $s:ident;) => {};
     ($reader:ident, $s:ident; $first:ident: $first_ty:ty $(, $rest:ident: $rest_ty:ty)*) => {
-        reverse_decode!($reader, $s; $($rest: $rest_ty),*);
+        crate::backend::bridge::reverse_decode!($reader, $s; $($rest: $rest_ty),*);
         let $first = <$first_ty>::decode(&mut $reader, $s);
     }
 }
 
-#[allow(unsafe_code)]
-mod arena;
-#[allow(unsafe_code)]
-mod buffer;
-#[deny(unsafe_code)]
-pub mod client;
-#[allow(unsafe_code)]
-mod closure;
-#[forbid(unsafe_code)]
-mod fxhash;
-#[forbid(unsafe_code)]
-mod handle;
-#[macro_use]
-#[forbid(unsafe_code)]
-mod rpc;
-#[allow(unsafe_code)]
-mod selfless_reify;
-#[forbid(unsafe_code)]
-pub mod server;
-#[allow(unsafe_code)]
-mod symbol;
-
-use buffer::Buffer;
-pub use rpc::PanicMessage;
-use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
+pub(crate) use {reverse_decode, reverse_encode};
 
 /// Configuration for establishing an active connection between a server and a
 /// client.  The server creates the bridge config (`run_server` in `server.rs`),
@@ -171,39 +175,39 @@ use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 /// of `client::Client`. The client constructs a local `Bridge` from the config
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
 #[repr(C)]
-pub struct BridgeConfig<'a> {
+pub(crate) struct BridgeConfig<'a> {
     /// Buffer used to pass initial input to the client.
-    input: Buffer,
+    pub(super) input: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    pub(super) dispatch: Closure<'a, Buffer, Buffer>,
 
     /// If 'true', always invoke the default panic hook
-    force_show_panics: bool,
+    pub(super) force_show_panics: bool,
 
     // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
     // this, but that requires unstable features. rust-analyzer uses this code
     // and avoids unstable features.
-    _marker: marker::PhantomData<*mut ()>,
+    pub(super) _marker: PhantomData<*mut ()>,
 }
 
 #[forbid(unsafe_code)]
 #[allow(non_camel_case_types)]
-mod api_tags {
-    use super::rpc::{DecodeMut, Encode, Reader, Writer};
+pub(super) mod api_tags {
+    use super::rpc::{DecodeMut, Encode, Reader, Writer, rpc_encode_decode};
 
     macro_rules! declare_tags {
         ($($name:ident {
             $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         }),* $(,)?) => {
             $(
-                pub(super) enum $name {
+                pub(crate) enum $name {
                     $($method),*
                 }
                 rpc_encode_decode!(enum $name { $($method),* });
             )*
 
-            pub(super) enum Method {
+            pub(crate) enum Method {
                 $($name($name)),*
             }
             rpc_encode_decode!(enum Method { $($name(m)),* });
@@ -216,27 +220,27 @@ mod api_tags {
 /// That is, normally a pair of impls for `T::Foo` and `T::Bar`
 /// can overlap, but if the impls are, instead, on types like
 /// `Marked<T::Foo, Foo>` and `Marked<T::Bar, Bar>`, they can't.
-trait Mark {
+pub(super) trait Mark {
     type Unmarked;
     fn mark(unmarked: Self::Unmarked) -> Self;
 }
 
 /// Unwrap types wrapped by `Mark::mark` (see `Mark` for details).
-trait Unmark {
+pub(super) trait Unmark {
     type Unmarked;
     fn unmark(self) -> Self::Unmarked;
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-struct Marked<T, M> {
+pub(super) struct Marked<T, M> {
     value: T,
-    _marker: marker::PhantomData<M>,
+    _marker: PhantomData<M>,
 }
 
 impl<T, M> Mark for Marked<T, M> {
     type Unmarked = T;
     fn mark(unmarked: Self::Unmarked) -> Self {
-        Marked { value: unmarked, _marker: marker::PhantomData }
+        Marked { value: unmarked, _marker: PhantomData }
     }
 }
 impl<T, M> Unmark for Marked<T, M> {
@@ -329,6 +333,7 @@ rpc_encode_decode!(
     }
 );
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum LitKind {
     Byte,
@@ -438,6 +443,7 @@ compound_traits!(
     }
 );
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Copy, Clone)]
 pub struct DelimSpan<Span> {
     pub open: Span,
@@ -445,6 +451,7 @@ pub struct DelimSpan<Span> {
     pub entire: Span,
 }
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 impl<Span: Copy> DelimSpan<Span> {
     pub fn from_single(span: Span) -> Self {
         DelimSpan { open: span, close: span, entire: span }
@@ -453,6 +460,7 @@ impl<Span: Copy> DelimSpan<Span> {
 
 compound_traits!(struct DelimSpan<Span> { open, close, entire });
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Clone)]
 pub struct Group<TokenStream, Span> {
     pub delimiter: Delimiter,
@@ -462,6 +470,7 @@ pub struct Group<TokenStream, Span> {
 
 compound_traits!(struct Group<TokenStream, Span> { delimiter, stream, span });
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Clone)]
 pub struct Punct<Span> {
     pub ch: u8,
@@ -471,6 +480,7 @@ pub struct Punct<Span> {
 
 compound_traits!(struct Punct<Span> { ch, joint, span });
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Ident<Span, Symbol> {
     pub sym: Symbol,
@@ -480,6 +490,7 @@ pub struct Ident<Span, Symbol> {
 
 compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Literal<Span, Symbol> {
     pub kind: LitKind,
@@ -490,6 +501,7 @@ pub struct Literal<Span, Symbol> {
 
 compound_traits!(struct Literal<Sp, Sy> { kind, symbol, suffix, span });
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Clone)]
 pub enum TokenTree<TokenStream, Span, Symbol> {
     Group(Group<TokenStream, Span>),
@@ -507,6 +519,7 @@ compound_traits!(
     }
 );
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Clone, Debug)]
 pub struct Diagnostic<Span> {
     pub level: Level,
@@ -521,6 +534,7 @@ compound_traits!(
 
 /// Globals provided alongside the initial inputs for a macro expansion.
 /// Provides values such as spans which are used frequently to avoid RPC.
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Clone)]
 pub struct ExpnGlobals<Span> {
     pub def_site: Span,

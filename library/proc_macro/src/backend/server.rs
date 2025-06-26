@@ -1,9 +1,16 @@
-//! Server-side traits.
+//! Abstract interfaces for `proc_macro` servers.
 
 use std::cell::Cell;
+use std::hash::Hash;
 use std::marker::PhantomData;
+use std::ops::{Bound, Range};
+use std::{mem, panic, thread};
 
-use super::*;
+use bridge::{Diagnostic, Literal, Mark, TokenTree, Unmark};
+
+use super::rpc::{self, Decode, DecodeMut, Encode, Reader, Writer};
+use super::support::{Buffer, handle};
+use super::{bridge, client};
 
 macro_rules! define_server_handles {
     (
@@ -26,14 +33,16 @@ macro_rules! define_server_handles {
         }
 
         $(
-            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$oty, client::$oty> {
+            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>>
+                for bridge::Marked<S::$oty, client::$oty>
+            {
                 fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
                     s.$oty.alloc(self).encode(w, s);
                 }
             }
 
             impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
-                for Marked<S::$oty, client::$oty>
+                for bridge::Marked<S::$oty, client::$oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
                     s.$oty.take(handle::Handle::decode(r, &mut ()))
@@ -41,7 +50,7 @@ macro_rules! define_server_handles {
             }
 
             impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
-                for &'s Marked<S::$oty, client::$oty>
+                for &'s bridge::Marked<S::$oty, client::$oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &'s HandleStore<MarkedTypes<S>>) -> Self {
                     &s.$oty[handle::Handle::decode(r, &mut ())]
@@ -49,7 +58,7 @@ macro_rules! define_server_handles {
             }
 
             impl<'s, S: Types> DecodeMut<'_, 's, HandleStore<MarkedTypes<S>>>
-                for &'s mut Marked<S::$oty, client::$oty>
+                for &'s mut bridge::Marked<S::$oty, client::$oty>
             {
                 fn decode(
                     r: &mut Reader<'_>,
@@ -61,14 +70,16 @@ macro_rules! define_server_handles {
         )*
 
         $(
-            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$ity, client::$ity> {
+            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>>
+                for bridge::Marked<S::$ity, client::$ity>
+            {
                 fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
                     s.$ity.alloc(self).encode(w, s);
                 }
             }
 
             impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
-                for Marked<S::$ity, client::$ity>
+                for bridge::Marked<S::$ity, client::$ity>
             {
                 fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
                     s.$ity.copy(handle::Handle::decode(r, &mut ()))
@@ -77,7 +88,8 @@ macro_rules! define_server_handles {
         )*
     }
 }
-with_api_handle_types!(define_server_handles);
+
+bridge::with_api_handle_types!(define_server_handles);
 
 pub trait Types {
     type FreeFunctions: 'static;
@@ -107,7 +119,7 @@ macro_rules! declare_server_traits {
         })*
 
         pub trait Server: Types $(+ $name)* {
-            fn globals(&mut self) -> ExpnGlobals<Self::Span>;
+            fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span>;
 
             /// Intern a symbol received from RPC
             fn intern_symbol(ident: &str) -> Self::Symbol;
@@ -117,12 +129,13 @@ macro_rules! declare_server_traits {
         }
     }
 }
-with_api!(Self, self_, declare_server_traits);
+
+bridge::with_api!(Self, self_, declare_server_traits);
 
 pub(super) struct MarkedTypes<S: Types>(S);
 
 impl<S: Server> Server for MarkedTypes<S> {
-    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+    fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
         <_>::mark(Server::globals(&mut self.0))
     }
     fn intern_symbol(ident: &str) -> Self::Symbol {
@@ -138,7 +151,7 @@ macro_rules! define_mark_types_impls {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
-            $(type $name = Marked<S::$name, client::$name>;)*
+            $(type $name = bridge::Marked<S::$name, client::$name>;)*
         }
 
         $(impl<S: $name> $name for MarkedTypes<S> {
@@ -148,7 +161,8 @@ macro_rules! define_mark_types_impls {
         })*
     }
 }
-with_api!(Self, self_, define_mark_types_impls);
+
+bridge::with_api!(Self, self_, define_mark_types_impls);
 
 struct Dispatcher<S: Types> {
     handle_store: HandleStore<S>,
@@ -174,11 +188,11 @@ macro_rules! define_dispatcher_impl {
                 let Dispatcher { handle_store, server } = self;
 
                 let mut reader = &buf[..];
-                match api_tags::Method::decode(&mut reader, &mut ()) {
-                    $(api_tags::Method::$name(m) => match m {
-                        $(api_tags::$name::$method => {
+                match bridge::api_tags::Method::decode(&mut reader, &mut ()) {
+                    $(bridge::api_tags::Method::$name(m) => match m {
+                        $(bridge::api_tags::$name::$method => {
                             let mut call_method = || {
-                                reverse_decode!(reader, handle_store; $($arg: $arg_ty),*);
+                                bridge::reverse_decode!(reader, handle_store; $($arg: $arg_ty),*);
                                 $name::$method(server, $($arg),*)
                             };
                             // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
@@ -189,7 +203,7 @@ macro_rules! define_dispatcher_impl {
                                 Ok(call_method())
                             } else {
                                 panic::catch_unwind(panic::AssertUnwindSafe(call_method))
-                                    .map_err(PanicMessage::from)
+                                    .map_err(rpc::PanicMessage::from)
                             };
 
                             buf.clear();
@@ -202,14 +216,15 @@ macro_rules! define_dispatcher_impl {
         }
     }
 }
-with_api!(Self, self_, define_dispatcher_impl);
+
+bridge::with_api!(Self, self_, define_dispatcher_impl);
 
 pub trait ExecutionStrategy {
     fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+        run_client: extern "C" fn(bridge::BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer;
 }
@@ -265,7 +280,7 @@ where
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+        run_client: extern "C" fn(bridge::BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         if self.cross_thread || ALREADY_RUNNING_SAME_THREAD.get() {
@@ -288,18 +303,18 @@ impl ExecutionStrategy for SameThread {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+        run_client: extern "C" fn(bridge::BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         let _guard = RunningSameThreadGuard::new();
 
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
-        run_client(BridgeConfig {
+        run_client(bridge::BridgeConfig {
             input,
             dispatch: (&mut dispatch).into(),
             force_show_panics,
-            _marker: marker::PhantomData,
+            _marker: PhantomData,
         })
     }
 }
@@ -320,7 +335,7 @@ where
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+        run_client: extern "C" fn(bridge::BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         let (mut server, mut client) = P::new();
@@ -331,11 +346,11 @@ where
                 client.recv().expect("server died while client waiting for reply")
             };
 
-            run_client(BridgeConfig {
+            run_client(bridge::BridgeConfig {
                 input,
                 dispatch: (&mut dispatch).into(),
                 force_show_panics,
-                _marker: marker::PhantomData,
+                _marker: PhantomData,
             })
         });
 
@@ -371,9 +386,9 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+    run_client: extern "C" fn(bridge::BridgeConfig<'_>) -> Buffer,
     force_show_panics: bool,
-) -> Result<O, PanicMessage> {
+) -> Result<O, rpc::PanicMessage> {
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
@@ -394,7 +409,7 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
         server: S,
         input: S::TokenStream,
         force_show_panics: bool,
-    ) -> Result<S::TokenStream, PanicMessage>
+    ) -> Result<S::TokenStream, rpc::PanicMessage>
     where
         S: Server,
         S::TokenStream: Default,
@@ -420,7 +435,7 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
         input: S::TokenStream,
         input2: S::TokenStream,
         force_show_panics: bool,
-    ) -> Result<S::TokenStream, PanicMessage>
+    ) -> Result<S::TokenStream, rpc::PanicMessage>
     where
         S: Server,
         S::TokenStream: Default,

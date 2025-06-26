@@ -11,13 +11,15 @@
 
 use std::cell::RefCell;
 use std::num::NonZero;
-use std::str;
+use std::{fmt, str};
 
-use super::*;
+use super::rpc::{DecodeMut, Encode, Reader, Writer};
+use super::support::{Arena, FxHashMap};
+use super::{bridge, client, server};
 
 /// Handle for a symbol string stored within the Interner.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Symbol(NonZero<u32>);
+pub(crate) struct Symbol(NonZero<u32>);
 
 impl !Send for Symbol {}
 impl !Sync for Symbol {}
@@ -104,17 +106,18 @@ impl<S> Encode<S> for Symbol {
 }
 
 impl<S: server::Server> DecodeMut<'_, '_, server::HandleStore<server::MarkedTypes<S>>>
-    for Marked<S::Symbol, Symbol>
+    for bridge::Marked<S::Symbol, Symbol>
 {
     fn decode(r: &mut Reader<'_>, s: &mut server::HandleStore<server::MarkedTypes<S>>) -> Self {
-        Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
+        bridge::Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
     }
 }
 
 impl<S: server::Server> Encode<server::HandleStore<server::MarkedTypes<S>>>
-    for Marked<S::Symbol, Symbol>
+    for bridge::Marked<S::Symbol, Symbol>
 {
     fn encode(self, w: &mut Writer, s: &mut server::HandleStore<server::MarkedTypes<S>>) {
+        use bridge::Unmark;
         S::with_symbol_string(&self.unmark(), |sym| sym.encode(w, s))
     }
 }
@@ -127,8 +130,8 @@ impl<S> DecodeMut<'_, '_, S> for Symbol {
 
 thread_local! {
     static INTERNER: RefCell<Interner> = RefCell::new(Interner {
-        arena: arena::Arena::new(),
-        names: fxhash::FxHashMap::default(),
+        arena: Arena::new(),
+        names: FxHashMap::default(),
         strings: Vec::new(),
         // Start with a base of 1 to make sure that `NonZero<u32>` works.
         sym_base: NonZero::new(1).unwrap(),
@@ -137,11 +140,11 @@ thread_local! {
 
 /// Basic interner for a `Symbol`, inspired by the one in `rustc_span`.
 struct Interner {
-    arena: arena::Arena,
+    arena: Arena,
     // SAFETY: These `'static` lifetimes are actually references to data owned
     // by the Arena. This is safe, as we never return them as static references
     // from `Interner`.
-    names: fxhash::FxHashMap<&'static str, Symbol>,
+    names: FxHashMap<&'static str, Symbol>,
     strings: Vec<&'static str>,
     // The offset to apply to symbol names stored in the interner. This is used
     // to ensure that symbol names are not re-used after the interner is
@@ -194,6 +197,6 @@ impl Interner {
 
         // SAFETY: This is cleared after the names and strings tables are
         // cleared out, so no references into the arena should remain.
-        self.arena = arena::Arena::new();
+        self.arena = Arena::new();
     }
 }

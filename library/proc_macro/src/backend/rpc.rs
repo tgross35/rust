@@ -5,19 +5,19 @@ use std::io::Write;
 use std::num::NonZero;
 use std::str;
 
-pub(super) type Writer = super::buffer::Buffer;
+pub(crate) type Writer = super::support::Buffer;
 
-pub(super) trait Encode<S>: Sized {
+pub(crate) trait Encode<S>: Sized {
     fn encode(self, w: &mut Writer, s: &mut S);
 }
 
-pub(super) type Reader<'a> = &'a [u8];
+pub(crate) type Reader<'a> = &'a [u8];
 
-pub(super) trait Decode<'a, 's, S>: Sized {
+pub(crate) trait Decode<'a, 's, S>: Sized {
     fn decode(r: &mut Reader<'a>, s: &'s S) -> Self;
 }
 
-pub(super) trait DecodeMut<'a, 's, S>: Sized {
+pub(crate) trait DecodeMut<'a, 's, S>: Sized {
     fn decode(r: &mut Reader<'a>, s: &'s mut S) -> Self;
 }
 
@@ -103,6 +103,8 @@ macro_rules! rpc_encode_decode {
         }
     }
 }
+
+pub(crate) use rpc_encode_decode;
 
 impl<S> Encode<S> for () {
     fn encode(self, _: &mut Writer, _: &mut S) {}
@@ -246,12 +248,14 @@ impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T> {
 
 /// Simplified version of panic payloads, ignoring
 /// types other than `&'static str` and `String`.
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 pub enum PanicMessage {
     StaticStr(&'static str),
     String(String),
     Unknown,
 }
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 impl From<Box<dyn Any + Send>> for PanicMessage {
     fn from(payload: Box<dyn Any + Send + 'static>) -> Self {
         if let Some(s) = payload.downcast_ref::<&'static str>() {
@@ -264,6 +268,7 @@ impl From<Box<dyn Any + Send>> for PanicMessage {
     }
 }
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 impl From<PanicMessage> for Box<dyn Any + Send> {
     fn from(val: PanicMessage) -> Self {
         match val {
@@ -277,6 +282,7 @@ impl From<PanicMessage> for Box<dyn Any + Send> {
     }
 }
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 impl PanicMessage {
     pub fn as_str(&self) -> Option<&str> {
         match self {
