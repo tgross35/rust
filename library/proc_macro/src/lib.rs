@@ -97,6 +97,11 @@ pub fn is_available() -> bool {
     bridge::client::is_available()
 }
 
+#[unstable(feature = "proc_macro_something", issue = "130856")]
+pub fn enable_standalone() {
+    backend::standalone::set();
+}
+
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
 /// The type provides interfaces for iterating over those token trees and, conversely,

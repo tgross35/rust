@@ -172,33 +172,40 @@ macro_rules! define_client_side {
 
 bridge::with_api!(self, self, define_client_side);
 
-struct Bridge<'a> {
+pub(crate) struct Bridge<'a, Span> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
     /// used for making requests.
-    cached_buffer: Buffer,
+    pub cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: Closure<'a, Buffer, Buffer>,
+    pub dispatch: Closure<'a, Buffer, Buffer>,
 
     /// Provided globals for this macro expansion.
-    globals: bridge::ExpnGlobals<Span>,
+    pub globals: bridge::ExpnGlobals<Span>,
 }
 
-impl<'a> !Send for Bridge<'a> {}
-impl<'a> !Sync for Bridge<'a> {}
+/// Bridge that is actually a bridge
+type BridgeBridge<'a> = Bridge<'a, Span>;
+
+impl<'a, S> !Send for Bridge<'a, S> {}
+impl<'a, S> !Sync for Bridge<'a, S> {}
 
 #[allow(unsafe_code)]
-mod state {
+pub(crate) mod state {
     use std::cell::{Cell, RefCell};
     use std::ptr;
 
     use super::Bridge;
+    use crate::bridge::client::BridgeBridge;
 
     thread_local! {
-        static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
+        pub(crate) static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
     }
 
-    pub(super) fn set<'bridge, R>(state: &RefCell<Bridge<'bridge>>, f: impl FnOnce() -> R) -> R {
+    pub(super) fn set<'bridge, R>(
+        state: &RefCell<BridgeBridge<'bridge>>,
+        f: impl FnOnce() -> R,
+    ) -> R {
         struct RestoreOnDrop(*const ());
         impl Drop for RestoreOnDrop {
             fn drop(&mut self) {
@@ -214,7 +221,7 @@ mod state {
     }
 
     pub(super) fn with<R>(
-        f: impl for<'bridge> FnOnce(Option<&RefCell<Bridge<'bridge>>>) -> R,
+        f: impl for<'bridge> FnOnce(Option<&RefCell<BridgeBridge<'bridge>>>) -> R,
     ) -> R {
         let state = BRIDGE_STATE.get();
         // SAFETY: the only place where the pointer is set is in `set`. It puts
@@ -224,13 +231,13 @@ mod state {
         // works the same for any lifetime of the bridge, including the actual
         // one, we can lie here and say that the lifetime is `'static` without
         // anyone noticing.
-        let bridge = unsafe { state.cast::<RefCell<Bridge<'static>>>().as_ref() };
+        let bridge = unsafe { state.cast::<RefCell<BridgeBridge<'static>>>().as_ref() };
         f(bridge)
     }
 }
 
-impl Bridge<'_> {
-    fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
+impl BridgeBridge<'_> {
+    fn with<R>(f: impl FnOnce(&mut BridgeBridge<'_>) -> R) -> R {
         state::with(|state| {
             let bridge = state.expect("procedural macro API is used outside of a procedural macro");
             let mut bridge = bridge
