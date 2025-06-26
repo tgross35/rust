@@ -14,7 +14,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Bound, Range};
 
-use super::rpc::{self, Decode, DecodeMut, Encode, Reader, Writer, rpc_encode_decode};
+use super::rpc::{self, DecodeMut, Encode, Reader, Writer, rpc_encode_decode};
 use super::support::{Buffer, Closure};
 use crate::{Delimiter, Level, Spacing};
 

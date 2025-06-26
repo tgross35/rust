@@ -220,6 +220,7 @@ macro_rules! define_dispatcher_impl {
 bridge::with_api!(Self, self_, define_dispatcher_impl);
 
 pub trait ExecutionStrategy {
+    #[allow(private_interfaces)]
     fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
@@ -276,6 +277,7 @@ impl<P> ExecutionStrategy for MaybeCrossThread<P>
 where
     P: MessagePipe<Buffer> + Send + 'static,
 {
+    #[allow(private_interfaces)]
     fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
@@ -299,6 +301,7 @@ where
 pub struct SameThread;
 
 impl ExecutionStrategy for SameThread {
+    #[allow(private_interfaces)]
     fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
@@ -331,6 +334,7 @@ impl<P> ExecutionStrategy for CrossThread<P>
 where
     P: MessagePipe<Buffer> + Send + 'static,
 {
+    #[allow(private_interfaces)]
     fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,

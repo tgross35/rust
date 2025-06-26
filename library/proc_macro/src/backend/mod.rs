@@ -10,4 +10,4 @@ pub mod server;
 
 mod symbol;
 
-// Eventually there will be a `mod standalone` here
+mod standalone;
