@@ -1,5 +1,6 @@
 //! Buffer management for same-process client<->server communication.
 
+use core::fmt;
 use std::io::{self, Write};
 use std::mem::{self, ManuallyDrop};
 use std::ops::{Deref, DerefMut};
@@ -7,12 +8,18 @@ use std::slice;
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[repr(C)]
-pub struct Buffer {
+pub(crate) struct Buffer {
     data: *mut u8,
     len: usize,
     capacity: usize,
     reserve: extern "C" fn(Buffer, usize) -> Buffer,
     drop: extern "C" fn(Buffer),
+}
+
+impl fmt::Debug for Buffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt::Debug::fmt(self.deref(), f)
+    }
 }
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]

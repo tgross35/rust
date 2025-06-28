@@ -11,3 +11,7 @@ pub mod server;
 mod symbol;
 
 mod standalone;
+
+pub(crate) fn enable_standalone() {
+    standalone::set();
+}

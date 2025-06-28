@@ -97,7 +97,7 @@ macro_rules! rpc_encode_decode {
                         $(let $field = DecodeMut::decode(r, s);)*
                         $name::$variant $(($field))*
                     })*
-                    _ => unreachable!(),
+                    x => unreachable!("got tag {x}"),
                 }
             }
         }

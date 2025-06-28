@@ -10,7 +10,8 @@ version = "0.0.0"
 edition = "2024"
 
 [lib]
-path = "../../library/proc_macro/src/lib.rs"
+# path = "../../library/proc_macro/src/lib.rs"
+path = "/Users/tmgross/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/lib.rs"
 test = false
 doctest = false
 

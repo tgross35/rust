@@ -36,6 +36,7 @@
 #![warn(rustdoc::unescaped_backticks)]
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(unused)]
 
 #[allow(missing_docs)]
 mod backend;
@@ -97,9 +98,10 @@ pub fn is_available() -> bool {
     bridge::client::is_available()
 }
 
+/// towo
 #[unstable(feature = "proc_macro_something", issue = "130856")]
 pub fn enable_standalone() {
-    backend::standalone::set();
+    backend::enable_standalone();
 }
 
 /// The main type provided by this crate, representing an abstract stream of

@@ -3,6 +3,7 @@
 use std::marker::PhantomData;
 
 #[repr(C)]
+#[derive(Debug)]
 pub(crate) struct Closure<'a, A, R> {
     call: unsafe extern "C" fn(*mut Env, A) -> R,
     env: *mut Env,

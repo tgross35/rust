@@ -535,7 +535,7 @@ compound_traits!(
 /// Globals provided alongside the initial inputs for a macro expansion.
 /// Provides values such as spans which are used frequently to avoid RPC.
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExpnGlobals<Span> {
     pub def_site: Span,
     pub call_site: Span,

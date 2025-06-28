@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::{Bound, Range};
+use std::panic::Location;
 use std::sync::Once;
 use std::{fmt, panic};
 
@@ -172,6 +173,7 @@ macro_rules! define_client_side {
 
 bridge::with_api!(self, self, define_client_side);
 
+#[derive(Debug)]
 pub(crate) struct Bridge<'a, Span> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
     /// used for making requests.
@@ -237,13 +239,24 @@ pub(crate) mod state {
 }
 
 impl BridgeBridge<'_> {
+    #[track_caller]
     fn with<R>(f: impl FnOnce(&mut BridgeBridge<'_>) -> R) -> R {
+        thread_local! {
+            static BORROW: RefCell<Vec<&'static Location<'static>>> = const { RefCell::new(Vec::new()) };
+        }
+
+        println!("borrowing at {}", Location::caller());
         state::with(|state| {
             let bridge = state.expect("procedural macro API is used outside of a procedural macro");
-            let mut bridge = bridge
-                .try_borrow_mut()
-                .expect("procedural macro API is used while it's already in use");
-            f(&mut bridge)
+
+            // BORROW.with_borrow_mut(|v| v.push(Location::caller()));
+            let Ok(mut bridge) = bridge.try_borrow_mut() else {
+                // println!("{}", std::backtrace::Backtrace::force_capture());
+                panic!("failed to borrow")
+            };
+            let ret = f(&mut bridge);
+            // BORROW.with_borrow_mut(|v| v.pop());
+            ret
         })
     }
 }
