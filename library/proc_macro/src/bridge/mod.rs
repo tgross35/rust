@@ -212,100 +212,6 @@ mod api_tags {
     with_api!(self, self, declare_tags);
 }
 
-/// Helper to wrap associated types to allow trait impl dispatch.
-/// That is, normally a pair of impls for `T::Foo` and `T::Bar`
-/// can overlap, but if the impls are, instead, on types like
-/// `Marked<T::Foo, Foo>` and `Marked<T::Bar, Bar>`, they can't.
-trait Mark {
-    type Unmarked;
-    fn mark(unmarked: Self::Unmarked) -> Self;
-}
-
-/// Unwrap types wrapped by `Mark::mark` (see `Mark` for details).
-trait Unmark {
-    type Unmarked;
-    fn unmark(self) -> Self::Unmarked;
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-struct Marked<T, M> {
-    value: T,
-    _marker: marker::PhantomData<M>,
-}
-
-impl<T, M> Mark for Marked<T, M> {
-    type Unmarked = T;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        Marked { value: unmarked, _marker: marker::PhantomData }
-    }
-}
-impl<T, M> Unmark for Marked<T, M> {
-    type Unmarked = T;
-    fn unmark(self) -> Self::Unmarked {
-        self.value
-    }
-}
-impl<'a, T, M> Unmark for &'a Marked<T, M> {
-    type Unmarked = &'a T;
-    fn unmark(self) -> Self::Unmarked {
-        &self.value
-    }
-}
-impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
-    type Unmarked = &'a mut T;
-    fn unmark(self) -> Self::Unmarked {
-        &mut self.value
-    }
-}
-
-impl<T: Mark> Mark for Vec<T> {
-    type Unmarked = Vec<T::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        // Should be a no-op due to std's in-place collect optimizations.
-        unmarked.into_iter().map(T::mark).collect()
-    }
-}
-impl<T: Unmark> Unmark for Vec<T> {
-    type Unmarked = Vec<T::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        // Should be a no-op due to std's in-place collect optimizations.
-        self.into_iter().map(T::unmark).collect()
-    }
-}
-
-macro_rules! mark_noop {
-    ($($ty:ty),* $(,)?) => {
-        $(
-            impl Mark for $ty {
-                type Unmarked = Self;
-                fn mark(unmarked: Self::Unmarked) -> Self {
-                    unmarked
-                }
-            }
-            impl Unmark for $ty {
-                type Unmarked = Self;
-                fn unmark(self) -> Self::Unmarked {
-                    self
-                }
-            }
-        )*
-    }
-}
-mark_noop! {
-    (),
-    bool,
-    char,
-    &'_ [u8],
-    &'_ str,
-    String,
-    u8,
-    usize,
-    Delimiter,
-    LitKind,
-    Level,
-    Spacing,
-}
-
 rpc_encode_decode!(
     enum Delimiter {
         Parenthesis,
@@ -364,55 +270,9 @@ rpc_encode_decode!(
     }
 );
 
-macro_rules! mark_compound {
-    (struct $name:ident <$($T:ident),+> { $($field:ident),* $(,)? }) => {
-        impl<$($T: Mark),+> Mark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
-            fn mark(unmarked: Self::Unmarked) -> Self {
-                $name {
-                    $($field: Mark::mark(unmarked.$field)),*
-                }
-            }
-        }
-
-        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
-            fn unmark(self) -> Self::Unmarked {
-                $name {
-                    $($field: Unmark::unmark(self.$field)),*
-                }
-            }
-        }
-    };
-    (enum $name:ident <$($T:ident),+> { $($variant:ident $(($field:ident))?),* $(,)? }) => {
-        impl<$($T: Mark),+> Mark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
-            fn mark(unmarked: Self::Unmarked) -> Self {
-                match unmarked {
-                    $($name::$variant $(($field))? => {
-                        $name::$variant $((Mark::mark($field)))?
-                    })*
-                }
-            }
-        }
-
-        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
-            fn unmark(self) -> Self::Unmarked {
-                match self {
-                    $($name::$variant $(($field))? => {
-                        $name::$variant $((Unmark::unmark($field)))?
-                    })*
-                }
-            }
-        }
-    }
-}
-
 macro_rules! compound_traits {
     ($($t:tt)*) => {
         rpc_encode_decode!($($t)*);
-        mark_compound!($($t)*);
     };
 }
 

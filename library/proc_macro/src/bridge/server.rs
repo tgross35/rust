@@ -26,34 +26,34 @@ macro_rules! define_server_handles {
         }
 
         $(
-            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$oty, client::$oty> {
-                fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
+            impl<S: Types> Encode<HandleStore<S>> for S::$oty {
+                fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
                     s.$oty.alloc(self).encode(w, s);
                 }
             }
 
-            impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
-                for Marked<S::$oty, client::$oty>
+            impl<S: Types> DecodeMut<'_, '_, HandleStore<S>>
+                for S::$oty
             {
-                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
                     s.$oty.take(handle::Handle::decode(r, &mut ()))
                 }
             }
 
-            impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
-                for &'s Marked<S::$oty, client::$oty>
+            impl<'s, S: Types> Decode<'_, 's, HandleStore<S>>
+                for &'s S::$oty
             {
-                fn decode(r: &mut Reader<'_>, s: &'s HandleStore<MarkedTypes<S>>) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &'s HandleStore<S>) -> Self {
                     &s.$oty[handle::Handle::decode(r, &mut ())]
                 }
             }
 
-            impl<'s, S: Types> DecodeMut<'_, 's, HandleStore<MarkedTypes<S>>>
-                for &'s mut Marked<S::$oty, client::$oty>
+            impl<'s, S: Types> DecodeMut<'_, 's, HandleStore<S>>
+                for &'s mut S::$oty
             {
                 fn decode(
                     r: &mut Reader<'_>,
-                    s: &'s mut HandleStore<MarkedTypes<S>>
+                    s: &'s mut HandleStore<S>
                 ) -> Self {
                     &mut s.$oty[handle::Handle::decode(r, &mut ())]
                 }
@@ -61,16 +61,16 @@ macro_rules! define_server_handles {
         )*
 
         $(
-            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$ity, client::$ity> {
-                fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
+            impl<S: Types> Encode<HandleStore<S>> for S::$ity {
+                fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
                     s.$ity.alloc(self).encode(w, s);
                 }
             }
 
-            impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
-                for Marked<S::$ity, client::$ity>
+            impl<S: Types> DecodeMut<'_, '_, HandleStore<S>>
+                for S::$ity
             {
-                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
                     s.$ity.copy(handle::Handle::decode(r, &mut ()))
                 }
             }
@@ -119,36 +119,36 @@ macro_rules! declare_server_traits {
 }
 with_api!(Self, self_, declare_server_traits);
 
-pub(super) struct MarkedTypes<S: Types>(S);
+// pub(super) struct MarkedTypes<S: Types>(S);
 
-impl<S: Server> Server for MarkedTypes<S> {
-    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
-        <_>::mark(Server::globals(&mut self.0))
-    }
-    fn intern_symbol(ident: &str) -> Self::Symbol {
-        <_>::mark(S::intern_symbol(ident))
-    }
-    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        S::with_symbol_string(symbol.unmark(), f)
-    }
-}
+// impl<S: Server> Server for MarkedTypes<S> {
+//     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+//         <_>::mark(Server::globals(&mut self.0))
+//     }
+//     fn intern_symbol(ident: &str) -> Self::Symbol {
+//         <_>::mark(S::intern_symbol(ident))
+//     }
+//     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+//         S::with_symbol_string(symbol.unmark(), f)
+//     }
+// }
 
-macro_rules! define_mark_types_impls {
-    ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
-    }),* $(,)?) => {
-        impl<S: Types> Types for MarkedTypes<S> {
-            $(type $name = Marked<S::$name, client::$name>;)*
-        }
+// macro_rules! define_mark_types_impls {
+//     ($($name:ident {
+//         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+//     }),* $(,)?) => {
+//         impl<S: Types> Types for MarkedTypes<S> {
+//             $(type $name = Marked<S::$name, client::$name>;)*
+//         }
 
-        $(impl<S: $name> $name for MarkedTypes<S> {
-            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)? {
-                <_>::mark($name::$method(&mut self.0, $($arg.unmark()),*))
-            })*
-        })*
-    }
-}
-with_api!(Self, self_, define_mark_types_impls);
+//         $(impl<S: $name> $name for MarkedTypes<S> {
+//             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)? {
+//                 <_>::mark($name::$method(&mut self.0, $($arg.unmark()),*))
+//             })*
+//         })*
+//     }
+// }
+// with_api!(Self, self_, define_mark_types_impls);
 
 struct Dispatcher<S: Types> {
     handle_store: HandleStore<S>,
@@ -167,8 +167,8 @@ macro_rules! define_dispatcher_impl {
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
-        impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
-            $(type $name = <MarkedTypes<S> as Types>::$name;)*
+        impl<S: Server> DispatcherTrait for Dispatcher<S> {
+            $(type $name = <S as Types>::$name;)*
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
@@ -364,8 +364,8 @@ pub trait MessagePipe<T>: Sized {
 
 fn run_server<
     S: Server,
-    I: Encode<HandleStore<MarkedTypes<S>>>,
-    O: for<'a, 's> DecodeMut<'a, 's, HandleStore<MarkedTypes<S>>>,
+    I: Encode<HandleStore<S>>,
+    O: for<'a, 's> DecodeMut<'a, 's, HandleStore<S>>,
 >(
     strategy: &impl ExecutionStrategy,
     handle_counters: &'static client::HandleCounters,
@@ -374,8 +374,7 @@ fn run_server<
     run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
-    let mut dispatcher =
-        Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
+    let mut dispatcher = Dispatcher { handle_store: HandleStore::new(handle_counters), server };
 
     let globals = dispatcher.server.globals();
 
@@ -400,15 +399,8 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
         S::TokenStream: Default,
     {
         let client::Client { handle_counters, run, _marker } = *self;
-        run_server(
-            strategy,
-            handle_counters,
-            server,
-            <MarkedTypes<S> as Types>::TokenStream::mark(input),
-            run,
-            force_show_panics,
-        )
-        .map(|s| <Option<<MarkedTypes<S> as Types>::TokenStream>>::unmark(s).unwrap_or_default())
+        run_server(strategy, handle_counters, server, input, run, force_show_panics)
+            .map(|s| s.unwrap_or_default())
     }
 }
 
@@ -426,17 +418,7 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
         S::TokenStream: Default,
     {
         let client::Client { handle_counters, run, _marker } = *self;
-        run_server(
-            strategy,
-            handle_counters,
-            server,
-            (
-                <MarkedTypes<S> as Types>::TokenStream::mark(input),
-                <MarkedTypes<S> as Types>::TokenStream::mark(input2),
-            ),
-            run,
-            force_show_panics,
-        )
-        .map(|s| <Option<<MarkedTypes<S> as Types>::TokenStream>>::unmark(s).unwrap_or_default())
+        run_server(strategy, handle_counters, server, (input, input2), run, force_show_panics)
+            .map(|s| s.unwrap_or_default())
     }
 }
