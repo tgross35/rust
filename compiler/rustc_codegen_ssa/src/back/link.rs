@@ -51,7 +51,7 @@ use rustc_target::spec::{
     LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
     RelroLevel, SanitizerSet, SplitDebuginfo,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
@@ -2407,6 +2407,8 @@ fn linker_with_args(
         }
     }
 
+    trace!("{}: {:?}", line!(), cmd.cmd());
+
     // ------------ Early order-dependent options ------------
 
     // If we're building something like a dynamic library then some platforms
@@ -2415,22 +2417,27 @@ fn linker_with_args(
     // Must be passed before any libraries to prevent the symbols to export from being thrown away,
     // at least on some platforms (e.g. windows-gnu).
     cmd.export_symbols(tmpdir, crate_type, &export_symbols);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Can be used for adding custom CRT objects or overriding order-dependent options above.
     // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
     // introduce a target spec option for order-independent linker options and migrate built-in
     // specs to it.
     add_pre_link_args(cmd, sess, flavor);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // ------------ Object code and libraries, order-dependent ------------
 
     // Pre-link CRT objects.
     add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     add_linked_symbol_object(cmd, sess, tmpdir, &crate_info.linked_symbols[&crate_type]);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Sanitizer libraries.
     add_sanitizer_libraries(sess, flavor, crate_type, cmd);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Object code from the current crate.
     // Take careful note of the ordering of the arguments we pass to the linker
@@ -2460,6 +2467,7 @@ fn linker_with_args(
     // in this DAG so far because they can only depend on other native libraries
     // and such dependencies are also required to be specified.
     add_local_crate_regular_objects(cmd, compiled_modules);
+    trace!("{}: {:?}", line!(), cmd.cmd());
     add_local_crate_metadata_objects(
         cmd,
         sess,
@@ -2469,7 +2477,9 @@ fn linker_with_args(
         crate_info,
         metadata,
     );
+    trace!("{}: {:?}", line!(), cmd.cmd());
     add_local_crate_allocator_objects(cmd, compiled_modules, crate_info, crate_type);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
@@ -2480,6 +2490,7 @@ fn linker_with_args(
     // FIXME: Support more fine-grained dead code removal on Solaris/illumos
     // and move this option back to the top.
     cmd.add_as_needed();
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Local native libraries of all kinds.
     add_local_native_libraries(
@@ -2490,6 +2501,7 @@ fn linker_with_args(
         tmpdir,
         link_output_kind,
     );
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Upstream rust crates and their non-dynamic native libraries.
     add_upstream_rust_crates(
@@ -2501,6 +2513,7 @@ fn linker_with_args(
         tmpdir,
         link_output_kind,
     );
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Dynamic native libraries from upstream crates.
     add_upstream_native_libraries(
@@ -2511,6 +2524,7 @@ fn linker_with_args(
         tmpdir,
         link_output_kind,
     );
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Raw-dylibs from all crates.
     let raw_dylib_dir = tmpdir.join("raw-dylibs");
@@ -2524,6 +2538,7 @@ fn linker_with_args(
         }
         cmd.include_path(&raw_dylib_dir);
     }
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Link with the import library generated for any raw-dylib functions.
     if sess.target.is_like_windows {
@@ -2546,6 +2561,7 @@ fn linker_with_args(
             cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
+    trace!("{}: {:?}", line!(), cmd.cmd());
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
     // they are used within inlined functions or instantiated generic functions. We do this *after*
     // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
@@ -2570,6 +2586,7 @@ fn linker_with_args(
         .flatten()
         .collect::<Vec<_>>();
     native_libraries_from_nonstatics.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     if sess.target.is_like_windows {
         for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
@@ -2591,15 +2608,18 @@ fn linker_with_args(
             cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
     // command line shorter, reset it to default here before adding more libraries.
     cmd.reset_per_library_state();
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // FIXME: Built-in target specs occasionally use this for linking system libraries,
     // eliminate all such uses by migrating them to `#[link]` attributes in `lib(std,c,unwind)`
     // and remove the option.
     add_late_link_args(cmd, sess, flavor, crate_type, crate_info);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // ------------ Arbitrary order-independent options ------------
 
@@ -2616,11 +2636,13 @@ fn linker_with_args(
         out_filename,
         tmpdir,
     );
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // Can be used for arbitrary order-independent options.
     // In practice may also be occasionally used for linking native libraries.
     // Passed after compiler-generated options to support manual overriding when necessary.
     add_user_defined_link_args(cmd, sess);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // ------------ Builtin configurable linker scripts ------------
     // The user's link args should be able to overwrite symbols in the compiler's
@@ -2628,11 +2650,13 @@ fn linker_with_args(
     // to work correctly, the user needs to be able to specify linker arguments like
     // `--defsym` and `--script` *before* any builtin linker scripts are evaluated.
     add_link_script(cmd, sess, tmpdir, crate_type);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // ------------ Object code and libraries, order-dependent ------------
 
     // Post-link CRT objects.
     add_post_link_objects(cmd, sess, link_output_kind, self_contained_crt_objects);
+    trace!("{}: {:?}", line!(), cmd.cmd());
 
     // ------------ Late order-dependent options ------------
 
