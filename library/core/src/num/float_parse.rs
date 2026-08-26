@@ -2,7 +2,7 @@
 
 use crate::error::Error;
 use crate::fmt;
-use crate::num::imp::dec2flt;
+use crate::num::imp::{Float, dec2flt, hexfloat};
 use crate::str::FromStr;
 
 macro_rules! from_str_float_impl {
@@ -77,8 +77,29 @@ from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
-// FIXME(f16): A fallback is used when the backend+target does not support f16 well, in order
-// to avoid ICEs.
+macro_rules! from_hex_float_impl {
+    ($t:ty) => {
+        impl $t {
+            /// TODO docs
+            #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+            pub fn from_hex<S: AsRef<[u8]>>(src: S) -> Result<Self, ParseHexFloatError> {
+                let (repr, _status) =
+                    hexfloat::parse_any(src.as_ref(), <$t>::BITS, <$t>::MANTISSA_DIGITS - 1)?;
+                Ok(<$t>::from_bits(repr as <$t as Float>::Int))
+            }
+        }
+    };
+}
+
+#[cfg(target_has_reliable_f16)]
+from_hex_float_impl!(f16);
+from_hex_float_impl!(f32);
+from_hex_float_impl!(f64);
+#[cfg(target_has_reliable_f128)]
+from_hex_float_impl!(f128);
+
+// FIXME(f16,f128): Fallbacks are used when the backend+target does not support the types well,
+// in order to avoid ICEs.
 
 #[cfg(not(target_has_reliable_f16))]
 #[expect(ineffective_unstable_trait_impl, reason = "stable trait on unstable type")]
@@ -89,6 +110,22 @@ impl FromStr for f16 {
     #[inline]
     fn from_str(_src: &str) -> Result<Self, ParseFloatError> {
         unimplemented!("requires target_has_reliable_f16")
+    }
+}
+
+#[cfg(not(target_has_reliable_f16))]
+impl f16 {
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn from_hex<S: AsRef<[u8]>>(src: &S) -> Result<Self, ParseHexFloatError> {
+        unimplemented!("requires target_has_reliable_f16")
+    }
+}
+
+#[cfg(not(target_has_reliable_f128))]
+impl f128 {
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn from_hex<S: AsRef<[u8]>>(src: &S) -> Result<Self, ParseHexFloatError> {
+        unimplemented!("requires target_has_reliable_f128")
     }
 }
 
@@ -160,6 +197,55 @@ impl fmt::Display for ParseFloatError {
         match self.kind {
             FloatErrorKind::Empty => "cannot parse float from empty string",
             FloatErrorKind::Invalid => "invalid float literal",
+        }
+        .fmt(f)
+    }
+}
+
+/// TODO docs
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[unstable(feature = "float_format_parse_hex", issue = "160626")]
+pub struct ParseHexFloatError {
+    pub(super) kind: HexFloatErrorKind,
+}
+
+impl ParseHexFloatError {
+    /// TODO docs
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn kind(&self) -> HexFloatErrorKind {
+        self.kind
+    }
+}
+
+/// The various types of errors that can cause parsing a float in hex format to fail.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[unstable(feature = "float_format_parse_hex", issue = "160626")]
+pub enum HexFloatErrorKind {
+    /// Missing the `0x`/`0X`
+    NoHexIndicator,
+    /// Empty significand
+    EmptySignificand,
+    /// No exponent digits
+    EmptyExponent,
+    /// Non-hex, repeated `.`
+    InvalidSignificand,
+    /// Non-decimal
+    InvalidExponent,
+}
+
+#[unstable(feature = "float_format_parse_hex", issue = "160626")]
+impl Error for ParseHexFloatError {}
+
+#[unstable(feature = "float_format_parse_hex", issue = "160626")]
+impl fmt::Display for ParseHexFloatError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            HexFloatErrorKind::EmptySignificand => "cannot parse float from empty string",
+            HexFloatErrorKind::EmptyExponent => "at least one exponent digit is required",
+            // HexFloatErrorKind::NonHexDigit => "expected hexadecimal digit",
+            // "expected decimal digit"
+            _ => todo!(),
         }
         .fmt(f)
     }

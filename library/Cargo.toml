@@ -59,14 +59,16 @@ rustflags = ["-Cpanic=abort"]
 # in the user's profile.
 [profile.dist]
 inherits = "release"
-codegen-units = 1
+opt-level = 1
+lto = false
+# codegen-units = 1
 debug = 1 # "limited"
 rustflags = [
     # `profile.lto=off` implies `-Cembed-bitcode=no`, but unconditionally embedding
     # bitcode is necessary for when users enable LTO.
     # Required until Cargo can re-build the standard library based on the value
     # of `profile.lto` in the user's profile.
-    "-Cembed-bitcode=yes",
+    # "-Cembed-bitcode=yes",
     # Enable frame pointers
     "-Zunstable-options",
     "-Cforce-frame-pointers=non-leaf",

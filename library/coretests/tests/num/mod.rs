@@ -33,6 +33,7 @@ mod float_ieee754_flt2dec_dec2flt;
 mod float_iter_sum_identity;
 mod floats;
 mod flt2dec;
+mod hexfloat;
 mod int_log;
 mod int_sqrt;
 mod midpoint;

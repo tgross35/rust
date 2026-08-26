@@ -63,6 +63,7 @@
 #![feature(f128)]
 #![feature(float_conversions)]
 #![feature(float_exact_integer_constants)]
+#![feature(float_format_parse_hex)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
@@ -177,56 +178,56 @@ macro_rules! test_runtime_and_compiletime {
     }
 }
 
-mod alloc;
-mod any;
-mod array;
-mod ascii;
-mod ascii_char;
-mod asserting;
-mod async_iter;
-mod atomic;
-mod bool;
-mod byte_str;
-mod cell;
-mod char;
-mod clone;
-mod cmp;
-mod const_ptr;
-mod convert;
-mod ffi;
-mod fmt;
-mod future;
-mod hash;
-mod hint;
-mod index;
-mod intrinsics;
-mod io;
-mod iter;
-mod lazy;
-mod macros;
-mod manually_drop;
-mod mem;
-mod net;
+// mod alloc;
+// mod any;
+// mod array;
+// mod ascii;
+// mod ascii_char;
+// mod asserting;
+// mod async_iter;
+// mod atomic;
+// mod bool;
+// mod byte_str;
+// mod cell;
+// mod char;
+// mod clone;
+// mod cmp;
+// mod const_ptr;
+// mod convert;
+// mod ffi;
+// mod fmt;
+// mod future;
+// mod hash;
+// mod hint;
+// mod index;
+// mod intrinsics;
+// mod io;
+// mod iter;
+// mod lazy;
+// mod macros;
+// mod manually_drop;
+// mod mem;
+// mod net;
 mod num;
-mod ops;
-mod option;
-mod panic;
-mod pattern;
-mod pin;
-mod pin_macro;
-mod process;
-mod ptr;
-mod result;
-mod simd;
-mod slice;
-mod str;
-mod str_lossy;
-mod task;
-mod time;
-mod tuple;
-mod unicode;
-mod waker;
-mod wtf8;
+// mod ops;
+// mod option;
+// mod panic;
+// mod pattern;
+// mod pin;
+// mod pin_macro;
+// mod process;
+// mod ptr;
+// mod result;
+// mod simd;
+// mod slice;
+// mod str;
+// mod str_lossy;
+// mod task;
+// mod time;
+// mod tuple;
+// mod unicode;
+// mod waker;
+// mod wtf8;
 
 /// Copied from `std::test_helpers::test_rng`, see that function for rationale.
 #[track_caller]

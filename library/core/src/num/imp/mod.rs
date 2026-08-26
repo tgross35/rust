@@ -10,6 +10,7 @@ pub mod diy_float;
 #[cfg(not(no_fp_fmt_parse))]
 pub mod flt2dec;
 pub mod fmt;
+pub mod hexfloat;
 
 // Public for core_arch.
 pub mod ppcf128;
@@ -22,4 +23,4 @@ pub(crate) mod libm;
 pub(crate) mod overflow_panic;
 mod traits;
 
-pub use traits::{Float, FloatExt, Int};
+pub use traits::{CastFrom, Float, FloatExt, Int};
