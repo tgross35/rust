@@ -10,6 +10,7 @@ pub mod diy_float;
 #[cfg(not(no_fp_fmt_parse))]
 pub mod flt2dec;
 pub mod fmt;
+pub mod hexfloat;
 
 pub(crate) mod int_bits;
 pub(crate) mod int_log10;

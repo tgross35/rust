@@ -67,6 +67,8 @@ pub use error::TryFromIntError;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use float_parse::ParseFloatError;
+#[unstable(feature = "float_format_parse_hex", issue = "160626")]
+pub use float_parse::{HexFloatErrorKind, ParseHexFloatError};
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
 #[unstable(

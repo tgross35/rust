@@ -15,19 +15,34 @@ pub trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;
 }
 
+trait CastFrom<T: Copy>: Copy {
+    fn cast_from(value: T) -> Self;
+}
+
+impl<T: Copy, U: CastInto<T> + Copy> CastFrom<U> for T {
+    fn cast_from(value: U) -> Self {
+        value.cast()
+    }
+}
+
 /// Collection of traits that allow us to be generic over integer size.
 pub trait Int:
     Sized
     + Clone
     + Copy
     + fmt::Debug
+    + fmt::LowerHex
+    + fmt::UpperHex
+    + fmt::Binary
     + ops::Shr<u32, Output = Self>
     + ops::Shl<u32, Output = Self>
     + ops::BitAnd<Output = Self>
     + ops::BitOr<Output = Self>
     + PartialEq
     + CastInto<i16>
+    + CastInto<u32>
 {
+    const BITS: u32;
     const ZERO: Self;
     const ONE: Self;
 }
@@ -41,7 +56,14 @@ macro_rules! int {
                 }
             }
 
+            impl CastInto<u32> for $ty {
+                fn cast(self) -> u32 {
+                    self as u32
+                }
+            }
+
             impl Int for $ty {
+                const BITS: u32 = Self::BITS;
                 const ZERO: Self = 0;
                 const ONE: Self = 1;
             }
@@ -49,7 +71,7 @@ macro_rules! int {
     }
 }
 
-int!(u16, u32, u64);
+int!(u16, u32, u64, u128);
 
 /// A helper trait to avoid duplicating basically all the conversion code for IEEE floats.
 #[doc(hidden)]
@@ -67,14 +89,20 @@ pub trait Float:
     + Copy
 {
     /// The unsigned integer with the same size as the float
-    type Int: Int + Into<u64>;
+    type Int: Int;
 
     /* general constants */
 
+    const ZERO: Self;
     const INFINITY: Self;
     const NEG_INFINITY: Self;
     const NAN: Self;
     const NEG_NAN: Self;
+    const MAX: Self;
+    const MIN: Self;
+
+    const MIN_POSITIVE_NORMAL: Self;
+    const MIN_POSITIVE_SUBNORMAL: Self;
 
     /// Bit width of the float
     const BITS: u32;
@@ -151,14 +179,33 @@ pub trait Float:
     /// Returns the category that this number falls into.
     fn classify(self) -> FpCategory;
 
-    /// Transmute to the integer representation
+    /// Transmute to the integer representation.
     fn to_bits(self) -> Self::Int;
+
+    /// Transmute from the integer representation.
+    fn from_bits(bits: Self::Int) -> Self;
+
+    // Classification methods from the primitives
+    fn is_sign_negative(self) -> bool;
+    fn is_sign_positive(self) -> bool;
+    fn is_nan(self) -> bool;
+    fn is_infinite(self) -> bool;
+
+    /// Returns the exponent, not adjusting for bias, not accounting for subnormals or zero.
+    fn ex(self) -> u32 {
+        u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_SAT
+    }
+
+    /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
+    fn exp_unbiased(self) -> i32 {
+        self.ex().cast_signed() - Self::EXP_BIAS.cast_signed()
+    }
 }
 
 /// Items that ideally would be on `Float`, but don't apply to all float types because they
 /// rely on the mantissa fitting into a `u64` (which isn't true for `f128`).
 #[doc(hidden)]
-pub trait FloatExt: Float {
+pub trait FloatExt: Float<Int: Into<u64>> {
     /// Performs a raw transmutation from an integer.
     fn from_u64_bits(v: u64) -> Self;
 
@@ -197,10 +244,18 @@ const fn pow2_to_pow10(a: i64) -> i64 {
 impl Float for f16 {
     type Int = u16;
 
+    const ZERO: Self = 0.0;
     const INFINITY: Self = Self::INFINITY;
     const NEG_INFINITY: Self = Self::NEG_INFINITY;
     const NAN: Self = Self::NAN;
     const NEG_NAN: Self = -Self::NAN;
+    const MAX: Self = Self::MAX;
+    const MIN: Self = Self::MIN;
+
+    // Exponent is a 1 in the LSB
+    const MIN_POSITIVE_NORMAL: Self = Self::from_bits(1 << Self::SIG_BITS);
+    // Single 1 in the LSB
+    const MIN_POSITIVE_SUBNORMAL: Self = Self::from_bits(1);
 
     const BITS: u32 = 16;
     const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
@@ -215,8 +270,28 @@ impl Float for f16 {
         self.to_bits()
     }
 
+    fn from_bits(bits: Self::Int) -> Self {
+        Self::from_bits(bits)
+    }
+
     fn classify(self) -> FpCategory {
         self.classify()
+    }
+
+    fn is_sign_negative(self) -> bool {
+        self.is_sign_negative()
+    }
+
+    fn is_sign_positive(self) -> bool {
+        self.is_sign_positive()
+    }
+
+    fn is_nan(self) -> bool {
+        self.is_nan()
+    }
+
+    fn is_infinite(self) -> bool {
+        self.is_infinite()
     }
 }
 
@@ -231,10 +306,18 @@ impl FloatExt for f16 {
 impl Float for f32 {
     type Int = u32;
 
+    const ZERO: Self = 0.0;
     const INFINITY: Self = f32::INFINITY;
     const NEG_INFINITY: Self = f32::NEG_INFINITY;
     const NAN: Self = f32::NAN;
     const NEG_NAN: Self = -f32::NAN;
+    const MAX: Self = Self::MAX;
+    const MIN: Self = Self::MIN;
+
+    // Exponent is a 1 in the LSB
+    const MIN_POSITIVE_NORMAL: Self = Self::from_bits(1 << Self::SIG_BITS);
+    // Single 1 in the LSB
+    const MIN_POSITIVE_SUBNORMAL: Self = Self::from_bits(1);
 
     const BITS: u32 = 32;
     const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
@@ -249,8 +332,28 @@ impl Float for f32 {
         self.to_bits()
     }
 
+    fn from_bits(bits: Self::Int) -> Self {
+        Self::from_bits(bits)
+    }
+
     fn classify(self) -> FpCategory {
         self.classify()
+    }
+
+    fn is_sign_negative(self) -> bool {
+        self.is_sign_negative()
+    }
+
+    fn is_sign_positive(self) -> bool {
+        self.is_sign_positive()
+    }
+
+    fn is_nan(self) -> bool {
+        self.is_nan()
+    }
+
+    fn is_infinite(self) -> bool {
+        self.is_infinite()
     }
 }
 
@@ -264,10 +367,18 @@ impl FloatExt for f32 {
 impl Float for f64 {
     type Int = u64;
 
+    const ZERO: Self = 0.0;
     const INFINITY: Self = Self::INFINITY;
     const NEG_INFINITY: Self = Self::NEG_INFINITY;
     const NAN: Self = Self::NAN;
     const NEG_NAN: Self = -Self::NAN;
+    const MAX: Self = Self::MAX;
+    const MIN: Self = Self::MIN;
+
+    // Exponent is a 1 in the LSB
+    const MIN_POSITIVE_NORMAL: Self = Self::from_bits(1 << Self::SIG_BITS);
+    // Single 1 in the LSB
+    const MIN_POSITIVE_SUBNORMAL: Self = Self::from_bits(1);
 
     const BITS: u32 = 64;
     const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
@@ -282,8 +393,28 @@ impl Float for f64 {
         self.to_bits()
     }
 
+    fn from_bits(bits: Self::Int) -> Self {
+        Self::from_bits(bits)
+    }
+
     fn classify(self) -> FpCategory {
         self.classify()
+    }
+
+    fn is_sign_negative(self) -> bool {
+        self.is_sign_negative()
+    }
+
+    fn is_sign_positive(self) -> bool {
+        self.is_sign_positive()
+    }
+
+    fn is_nan(self) -> bool {
+        self.is_nan()
+    }
+
+    fn is_infinite(self) -> bool {
+        self.is_infinite()
     }
 }
 
@@ -291,5 +422,61 @@ impl FloatExt for f64 {
     #[inline]
     fn from_u64_bits(v: u64) -> Self {
         f64::from_bits(v)
+    }
+}
+
+#[cfg(target_has_reliable_f128)]
+impl Float for f128 {
+    type Int = u128;
+
+    const ZERO: Self = 0.0;
+    const INFINITY: Self = Self::INFINITY;
+    const NEG_INFINITY: Self = Self::NEG_INFINITY;
+    const NAN: Self = Self::NAN;
+    const NEG_NAN: Self = -Self::NAN;
+    const MAX: Self = Self::MAX;
+    const MIN: Self = Self::MIN;
+
+    // Exponent is a 1 in the LSB
+    const MIN_POSITIVE_NORMAL: Self = Self::from_bits(1 << Self::SIG_BITS);
+    // Single 1 in the LSB
+    const MIN_POSITIVE_SUBNORMAL: Self = Self::from_bits(1);
+
+    const BITS: u32 = 128;
+    const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
+    const EXP_MASK: Self::Int = Self::EXPONENT_MASK;
+    const SIG_MASK: Self::Int = Self::MANTISSA_MASK;
+
+    // Placeholder values since they are not consumed for f128
+    const MIN_EXPONENT_ROUND_TO_EVEN: i32 = 0;
+    const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 0;
+    const SMALLEST_POWER_OF_TEN: i32 = 0;
+
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
+
+    fn from_bits(bits: Self::Int) -> Self {
+        Self::from_bits(bits)
+    }
+
+    fn classify(self) -> FpCategory {
+        self.classify()
+    }
+
+    fn is_sign_negative(self) -> bool {
+        self.is_sign_negative()
+    }
+
+    fn is_sign_positive(self) -> bool {
+        self.is_sign_positive()
+    }
+
+    fn is_nan(self) -> bool {
+        self.is_nan()
+    }
+
+    fn is_infinite(self) -> bool {
+        self.is_infinite()
     }
 }
