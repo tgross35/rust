@@ -1,6 +1,6 @@
 use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
-use crate::num::imp::{flt2dec, fmt as numfmt};
+use crate::num::imp::{flt2dec, fmt as numfmt, hexfloat};
 
 #[doc(hidden)]
 trait GeneralFormat: PartialOrd {
@@ -232,6 +232,22 @@ macro_rules! floating {
                     float_to_exponential_common(fmt, self, true)
                 }
             }
+
+            // FIXME(float_format_parse_hex): change these to `LowerHex`/`UpperHex` trait impls
+            // before stabilization.
+            impl $ty {
+                /// Standin for the `LowerHex` trait while this is unstable for floats.
+                #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+                pub fn fmt_lower_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+                    hexfloat::fmt_any_hex(*self, fmt, false)
+                }
+
+                /// Standin for the `UpperHex` trait while this is unstable for floats.
+                #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+                pub fn fmt_upper_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+                    hexfloat::fmt_any_hex(*self, fmt, true)
+                }
+            }
         )*
     };
 }
@@ -241,7 +257,24 @@ floating! { f32 f64 }
 #[cfg(target_has_reliable_f16)]
 floating! { f16 }
 
-// FIXME(f16): A fallback is used when the backend+target does not support f16 well, in order
+// FIXME(float_format_parse_hex): change these to `LowerHex`/`UpperHex` trait impls
+// before stabilization.
+#[cfg(target_has_reliable_f128)]
+impl f128 {
+    /// Standin for the `LowerHex` trait while this is unstable for floats.
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn fmt_lower_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+        hexfloat::fmt_any_hex(*self, fmt, false)
+    }
+
+    /// Standin for the `UpperHex` trait while this is unstable for floats.
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn fmt_upper_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+        hexfloat::fmt_any_hex(*self, fmt, true)
+    }
+}
+
+// FIXME(f16,f128): A fallback is used when the backend+target does not support f16 well, in order
 // to avoid ICEs.
 
 #[cfg(not(target_has_reliable_f16))]
@@ -280,10 +313,44 @@ impl UpperExp for f16 {
     }
 }
 
+// FIXME(float_format_parse_hex): change these to `LowerHex`/`UpperHex` trait impls
+// before stabilization.
+#[cfg(not(target_has_reliable_f16))]
+impl f16 {
+    /// Standin for the `LowerHex` trait while this is unstable for floats.
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn fmt_lower_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+
+    /// Standin for the `UpperHex` trait while this is unstable for floats.
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn fmt_upper_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for f128 {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{:#034x}", self.to_bits())
+    }
+}
+
+// FIXME(float_format_parse_hex): change these to `LowerHex`/`UpperHex` trait impls
+// before stabilization.
+#[cfg(not(target_has_reliable_f128))]
+impl f128 {
+    /// Standin for the `LowerHex` trait while this is unstable for floats.
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn fmt_lower_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+
+    /// Standin for the `UpperHex` trait while this is unstable for floats.
+    #[unstable(feature = "float_format_parse_hex", issue = "160626")]
+    pub fn fmt_upper_hex(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
     }
 }

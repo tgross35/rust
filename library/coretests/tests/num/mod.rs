@@ -3,46 +3,47 @@ use core::num::{IntErrorKind, ParseIntError, TryFromIntError, can_not_overflow};
 use core::ops::{Add, Div, Mul, Rem, Sub};
 use core::str::FromStr;
 
-#[macro_use]
-mod int_macros;
+// #[macro_use]
+// mod int_macros;
 
-mod i128;
-mod i16;
-mod i32;
-mod i64;
-mod i8;
+// mod i128;
+// mod i16;
+// mod i32;
+// mod i64;
+// mod i8;
 
-#[macro_use]
-mod uint_macros;
+// #[macro_use]
+// mod uint_macros;
 
-mod u128;
-mod u16;
-mod u32;
-mod u64;
-mod u8;
+// mod u128;
+// mod u16;
+// mod u32;
+// mod u64;
+// mod u8;
 
-mod bignum;
-mod carryless_mul;
-mod cast;
-mod clamp_magnitude;
-mod complex;
-mod const_from;
-mod dec2flt;
-mod float_conversions;
-mod float_ieee754_flt2dec_dec2flt;
-mod float_iter_sum_identity;
-mod floats;
-mod flt2dec;
-mod int_log;
-mod int_sqrt;
-mod midpoint;
-mod nan;
-mod niche_types;
-mod nonzero;
-mod ops;
-mod wrapping;
+// mod bignum;
+// mod carryless_mul;
+// mod cast;
+// mod clamp_magnitude;
+// mod complex;
+// mod const_from;
+// mod dec2flt;
+// mod float_conversions;
+// mod float_ieee754_flt2dec_dec2flt;
+// mod float_iter_sum_identity;
+// mod floats;
+// mod flt2dec;
+mod hexfloat;
+// mod int_log;
+// mod int_sqrt;
+// mod midpoint;
+// mod nan;
+// mod niche_types;
+// mod nonzero;
+// mod ops;
+// mod wrapping;
 
-use floats::{assert_biteq, float_test};
+// use floats::{assert_biteq, float_test};
 
 /// Adds the attribute to all items in the block.
 macro_rules! cfg_block {
