@@ -12,7 +12,7 @@
 //@[powerpc_vsx] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec,+vsx --cfg altivec --cfg vsx
 //@[powerpc_vsx] needs-llvm-components: powerpc
 //@[powerpc_vsx] filecheck-flags: --check-prefix altivec --check-prefix vsx
-//@[powerpc_power9] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec,+vsx,+power9-vector --cfg altivec --cfg vsx --cfg power9 --cfg power9be
+//@[powerpc_power9] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec,+vsx,+isa-3.0 --cfg altivec --cfg vsx --cfg power9 --cfg power9be
 //@[powerpc_power9] needs-llvm-components: powerpc
 //@[powerpc_power9] filecheck-flags: --check-prefix altivec --check-prefix vsx --check-prefix power9 --check-prefix power9be
 
@@ -22,14 +22,14 @@
 //@[powerpc64_vsx] compile-flags: --target powerpc64-unknown-linux-gnu -C target-feature=+vsx --cfg powerpc64 --cfg altivec --cfg vsx
 //@[powerpc64_vsx] needs-llvm-components: powerpc
 //@[powerpc64_vsx] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx
-//@[powerpc64_power9] compile-flags: --target powerpc64-unknown-linux-gnu -C target-feature=+vsx,+power9-vector --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9 --cfg power9be
+//@[powerpc64_power9] compile-flags: --target powerpc64-unknown-linux-gnu -C target-feature=+vsx,+isa-3.0 --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9 --cfg power9be
 //@[powerpc64_power9] needs-llvm-components: powerpc
 //@[powerpc64_power9] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx --check-prefix power9 --check-prefix=power9be
 
 //@[powerpc64le] compile-flags: --target powerpc64le-unknown-linux-gnu --cfg powerpc64 --cfg altivec --cfg vsx
 //@[powerpc64le] needs-llvm-components: powerpc
 //@[powerpc64le] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx
-//@[powerpc64le_power9] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-feature=+power9-vector --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9
+//@[powerpc64le_power9] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-feature=+vsx,+isa-3.0 --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9
 //@[powerpc64le_power9] needs-llvm-components: powerpc
 //@[powerpc64le_power9] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx --check-prefix power9
 
@@ -56,11 +56,11 @@ compile_error!("altivec cfg and target feature mismatch");
 #[cfg_attr(vsx, cfg(not(target_feature = "vsx")))]
 #[cfg_attr(not(vsx), cfg(target_feature = "vsx"))]
 compile_error!("vsx cfg and target feature mismatch");
-#[cfg_attr(power9, cfg(not(target_feature = "power9-vector")))]
-#[cfg_attr(not(power9), cfg(target_feature = "power9-vector"))]
-compile_error!("power9-vector cfg and target feature mismatch");
-#[cfg_attr(power9be, cfg(not(all(target_feature = "power9-vector", target_endian = "big"))))]
-#[cfg_attr(not(power9be), cfg(all(target_feature = "power9-vector", target_endian = "big")))]
+#[cfg_attr(power9, cfg(not(target_feature = "isa-3.0")))]
+#[cfg_attr(not(power9), cfg(target_feature = "isa-3.0"))]
+compile_error!("isa-3.0 cfg and target feature mismatch");
+#[cfg_attr(power9be, cfg(not(all(target_feature = "isa-3.0", target_endian = "big"))))]
+#[cfg_attr(not(power9be), cfg(all(target_feature = "isa-3.0", target_endian = "big")))]
 compile_error!("power9be cfg and target feature mismatch");
 
 // Check floating point scalars are put in the right vector lane. This uses power9 for consistent

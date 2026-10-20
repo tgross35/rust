@@ -278,7 +278,10 @@ pub(crate) fn to_llvm_features<'a>(target: &Target, s: &'a str) -> Option<LLVMFe
         },
         // Filter out features that are not supported by the current LLVM version
         Arch::PowerPC | Arch::PowerPC64 => match s {
-            "power8-crypto" => Some(LLVMFeature::new("crypto")),
+            "isa-2.06" => Some(LLVMFeature::new("isa-v206-instructions")),
+            "isa-2.07" => Some(LLVMFeature::new("isa-v207-instructions")),
+            "isa-3.0" => Some(LLVMFeature::new("isa-v30-instructions")),
+            "isa-3.1" => Some(LLVMFeature::new("isa-v31-instructions")),
             s => Some(LLVMFeature::new(s)),
         },
         Arch::RiscV32 | Arch::RiscV64 => match s {

@@ -139,7 +139,7 @@ mod s390x {
 #[no_mangle]
 #[unsafe(naked)]
 #[cfg(target_arch = "powerpc64")]
-#[target_feature(enable = "power10-vector")]
+#[target_feature(enable = "isa-3.1,vsx")]
 unsafe extern "C" fn power10_vector() {
     naked_asm!("xxpermx 34, 0, 1, 2, 0", "blr")
 }

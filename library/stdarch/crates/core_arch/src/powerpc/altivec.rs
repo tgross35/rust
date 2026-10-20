@@ -733,10 +733,10 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(
-                all(test, not(target_feature = "power9-altivec")),
+                all(test, not(target_feature = "isa-3.0")),
                 assert_instr($notpwr9)
             )]
-            #[cfg_attr(all(test, target_feature = "power9-altivec"), assert_instr($pwr9))]
+            #[cfg_attr(all(test, target_feature = "isa-3.0"), assert_instr($pwr9))]
             pub unsafe fn $fun(a: isize, b: *const $ty) -> t_t_l!($ty) {
                 let addr = (b as *const u8).offset(a);
 
@@ -782,10 +782,10 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(
-                all(test, not(target_feature = "power9-altivec")),
+                all(test, not(target_feature = "isa-3.0")),
                 assert_instr($notpwr9)
             )]
-            #[cfg_attr(all(test, target_feature = "power9-altivec"), assert_instr($pwr9))]
+            #[cfg_attr(all(test, target_feature = "isa-3.0"), assert_instr($pwr9))]
             pub unsafe fn $fun(s: t_t_l!($ty), a: isize, b: *mut $ty) {
                 let addr = (b as *mut u8).offset(a);
 
@@ -854,9 +854,9 @@ mod sealed {
         ($fun:ident ($ty:ident) -> $r:ident $([ $pwr9:ident ])? ) => {
             #[inline]
             #[target_feature(enable = "altivec")]
-            $( #[cfg_attr(all(test, target_feature = "power9-altivec"), assert_instr($pwr9))] )?
+            $( #[cfg_attr(all(test, target_feature = "isa-3.0"), assert_instr($pwr9))] )?
             unsafe fn $fun(a: $ty, b: $ty) -> $r {
-                $( if cfg!(target_feature = "power9-altivec") {
+                $( if cfg!(target_feature = "isa-3.0") {
                     transmute($pwr9(transmute(a), transmute(b)))
                 } else )? {
                     let zero = transmute(i32x4::new(0, 0, 0, 0));
@@ -1552,7 +1552,7 @@ mod sealed {
     impl_vec_splat! { vector_bool_int, vspltw }
 
     macro_rules! splat {
-        ($name:ident, $v:ident, $r:ident [$instr_altivec:ident / $instr_pwr9:ident, $doc:literal]) => {
+        ($name:ident, $v:ident, $r:ident [$instr_altivec:ident / $instr_vsx:ident, $doc:literal]) => {
             #[doc = $doc]
             #[inline]
             #[target_feature(enable = "altivec")]
@@ -1561,8 +1561,8 @@ mod sealed {
                 assert_instr($instr_altivec, IMM5 = 1)
             )]
             #[cfg_attr(
-                all(test, target_feature = "power9-vector"),
-                assert_instr($instr_pwr9, IMM5 = 1)
+                all(test, target_feature = "vsx"),
+                assert_instr($instr_vsx, IMM5 = 1)
             )]
             #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             pub unsafe fn $name<const IMM5: i8>() -> s_t_l!($r) {
@@ -3571,7 +3571,7 @@ where
 /// All bit and byte element numbers are specified in big-endian order. This intrinsic is not
 /// endian-neutral.
 #[inline]
-#[target_feature(enable = "power9-altivec")]
+#[target_feature(enable = "isa-3.0")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_slv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char {
     vslv(a, b)
@@ -3589,7 +3589,7 @@ pub unsafe fn vec_slv(a: vector_unsigned_char, b: vector_unsigned_char) -> vecto
 /// All bit and byte element numbers are specified in big-endian order. This intrinsic is not
 /// endian-neutral.
 #[inline]
-#[target_feature(enable = "power9-altivec")]
+#[target_feature(enable = "altivec,isa-3.0")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_srv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char {
     vsrv(a, b)

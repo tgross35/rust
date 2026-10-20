@@ -29,7 +29,7 @@ mod sealed {
     use super::*;
 
     #[inline]
-    #[target_feature(enable = "power9-vector")]
+    #[target_feature(enable = "isa-3.0,vsx")]
     #[cfg_attr(test, assert_instr(lxvl))]
     unsafe fn vec_lxvl(p: *const u8, l: usize) -> vector_signed_int {
         lxvl(p, l << 56)
@@ -47,7 +47,7 @@ mod sealed {
             impl VectorXloads for *const $ty {
                 type Result = t_t_l!($ty);
                 #[inline]
-                #[target_feature(enable = "power9-vector")]
+                #[target_feature(enable = "isa-3.0,vsx")]
                 unsafe fn vec_xl_len(self, l: usize) -> Self::Result {
                     transmute(vec_lxvl(self as *const u8, l))
                 }
@@ -64,7 +64,7 @@ mod sealed {
     impl_vsx_loads! { f32 }
 
     #[inline]
-    #[target_feature(enable = "power9-vector")]
+    #[target_feature(enable = "isa-3.0,vsx")]
     #[cfg_attr(test, assert_instr(stxvl))]
     unsafe fn vec_stxvl(v: vector_signed_int, a: *mut u8, l: usize) {
         stxvl(v, a, l << 56);
@@ -82,7 +82,7 @@ mod sealed {
             impl VectorXstores for t_t_l!($ty) {
                 type Out = *mut $ty;
                 #[inline]
-                #[target_feature(enable = "power9-vector")]
+                #[target_feature(enable = "isa-3.0,vsx")]
                 unsafe fn vec_xst_len(self, a: Self::Out, l: usize) {
                     stxvl(transmute(self), a as *mut u8, l)
                 }
@@ -117,7 +117,7 @@ mod sealed {
 /// ## Notes
 /// vec_xl_len should not be used to load from cache-inhibited memory.
 #[inline]
-#[target_feature(enable = "power9-vector")]
+#[target_feature(enable = "isa-3.0,vsx")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_xl_len<T>(p: T, len: usize) -> <T as sealed::VectorXloads>::Result
 where
@@ -146,7 +146,7 @@ where
 /// ## Notes
 /// vec_xst_len should not be used to store to cache-inhibited memory.
 #[inline]
-#[target_feature(enable = "power9-vector")]
+#[target_feature(enable = "isa-3.0,vsx")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_xst_len<T>(v: T, a: <T as sealed::VectorXstores>::Out, l: usize)
 where

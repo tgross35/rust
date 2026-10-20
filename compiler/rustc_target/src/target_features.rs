@@ -602,20 +602,23 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // affect the ABI.
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    ("crypto", Unstable(sym::powerpc_target_feature), &["altivec", "isa-2.07"]),
     (
         "hard-float",
         // Pinned down by [`Target::abi_required_features`].
         InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
         &[],
     ),
+    // Power7
+    ("isa-2.06", Unstable(sym::powerpc_target_feature), &[]),
+    // Power8
+    ("isa-2.07", Unstable(sym::powerpc_target_feature), &["isa-2.06"]),
+    // Power9
+    ("isa-3.0", Unstable(sym::powerpc_target_feature), &["isa-2.07"]),
+    // Power10
+    ("isa-3.1", Unstable(sym::powerpc_target_feature), &["isa-3.0"]),
     ("msync", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
-    ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
-    ("power8-crypto", Unstable(sym::powerpc_target_feature), &["power8-altivec"]),
-    ("power8-vector", Unstable(sym::powerpc_target_feature), &["vsx", "power8-altivec"]),
-    ("power9-altivec", Unstable(sym::powerpc_target_feature), &["power8-altivec"]),
-    ("power9-vector", Unstable(sym::powerpc_target_feature), &["power8-vector", "power9-altivec"]),
-    ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     (
         "spe",
