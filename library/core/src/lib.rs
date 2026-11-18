@@ -372,6 +372,9 @@ pub mod primitive;
 #[allow(rustdoc::bare_urls)]
 mod core_arch;
 
+#[path = "../../memchr/src/lib.rs"]
+mod memchr;
+
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch;
 
