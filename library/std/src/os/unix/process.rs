@@ -172,10 +172,15 @@ pub impl(self) trait CommandExt {
     where
         S: AsRef<OsStr>;
 
-    /// Sets the process group ID (PGID) of the child process. Equivalent to a
-    /// `setpgid` call in the child process, but may be more efficient.
+    /// Sets the process group ID (PGID) of the child process.
     ///
-    /// Process groups determine which processes receive signals.
+    /// If a group ID of 0 is provided, a new process group will be created with
+    /// the child as the leader. In this case, the new PGID will be the same as
+    /// the child's process ID.
+    ///
+    /// This is equivalent to a [`setpgid`] call in the child process, but may
+    /// be more efficient. Groups are used for controlling which processes
+    /// receive signals.
     ///
     /// # Examples
     ///
@@ -186,8 +191,6 @@ pub impl(self) trait CommandExt {
     ///
     /// The parent process could install a signal handler and manage the
     /// subprocess on its own terms.
-    ///
-    /// A process group ID of 0 will use the process ID as the PGID.
     ///
     #[cfg_attr(target_family = "unix", doc = "```no_run")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
@@ -202,6 +205,9 @@ pub impl(self) trait CommandExt {
     /// #
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    ///
+    /// [`setpgid`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/setpgid.html
+    #[doc(alias = "setpgid")]
     #[stable(feature = "process_set_process_group", since = "1.64.0")]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
 
@@ -390,8 +396,8 @@ pub impl(self) trait ExitStatusExt {
 
     /// If the process was terminated by a signal, returns that signal.
     ///
-    /// In other words, if [`WIFSIGNALED`][`wait`], this returns [`WTERMSIG`][`wait`]. For such a status,
-    /// [`ExitStatus::code`] returns `None`:
+    /// In other words, if [`WIFSIGNALED`][`wait`], this returns [`WTERMSIG`][`wait`]. For such a
+    /// status, [`ExitStatus::code`] returns `None`:
     ///
     #[cfg_attr(target_family = "unix", doc = "```no_run")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
@@ -426,8 +432,9 @@ pub impl(self) trait ExitStatusExt {
 
     /// If the process was stopped by a signal, returns that signal.
     ///
-    /// In other words, if [`WIFSTOPPED`][`wait`], this returns [`WSTOPSIG`][`wait`].  This is only possible if the status came from
-    /// a [`wait`] system call which was passed [`WUNTRACED`][`wait`], and was then converted into an [`ExitStatus`].
+    /// In other words, if [`WIFSTOPPED`][`wait`], this returns [`WSTOPSIG`][`wait`].  This is
+    /// only possible if the status came from a [`wait`] system call which was passed
+    /// [`WUNTRACED`][`wait`], and was then converted into an [`ExitStatus`].
     ///
     /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
@@ -435,8 +442,9 @@ pub impl(self) trait ExitStatusExt {
 
     /// Whether the process was continued from a stopped status.
     ///
-    /// I.e. [`WIFCONTINUED`][`wait`].  This is only possible if the status came from a [`wait`] system call
-    /// which was passed [`WCONTINUED`][`wait`], and was then converted into an [`ExitStatus`].
+    /// I.e. [`WIFCONTINUED`][`wait`].  This is only possible if the status came from a [`wait`]
+    /// system call which was passed [`WCONTINUED`][`wait`], and was then converted into an
+    /// [`ExitStatus`].
     ///
     /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
@@ -517,62 +525,75 @@ impl ExitStatusExt for process::ExitStatusError {
 pub impl(self) trait ChildExt {
     /// Sends a signal to a child process.
     ///
+    /// Refer to the [`sig`] module for standard signals. Some platforms may support other
+    /// signals, possibly available in the `libc` crate.
+    ///
     /// # Errors
     ///
     /// This function will return an error if the signal is invalid. The integer values associated
-    /// with signals are implementation-specific, so it's encouraged to use a crate that provides
-    /// posix bindings.
+    /// with signals are implementation-specific, so it is encouraged to use values from the [`sig`]
+    /// module or from `libc`.
     ///
     /// # Examples
     ///
-    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(target_family = "unix", doc = "```")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_send_signal)]
     ///
-    /// use std::{io, os::unix::process::ChildExt, process::{Command, Stdio}};
+    /// use std::{io, process::Command};
+    /// use std::os::unix::process::{ChildExt, ExitStatusExt, sig};
     ///
-    /// use libc::SIGTERM;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
-    ///     let child = Command::new("cat").stdin(Stdio::piped()).spawn()?;
-    ///     child.send_signal(SIGTERM)?;
-    ///     # }
-    ///     Ok(())
-    /// }
+    /// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+    /// let mut child = Command::new("sleep").arg("1").spawn()?;
+    /// child.send_signal(sig::TERM)?;
+    /// let status = child.wait()?;
+    /// assert_eq!(status.signal(), Some(sig::TERM));
+    /// # }
+    /// # Ok::<(), io::Error>(())
     /// ```
+    #[doc(alias = "kill")]
     fn send_signal(&self, signal: i32) -> io::Result<()>;
 
     /// Sends a signal to a child process's process group.
     ///
+    /// Refer to the [`sig`] module for standard signals. Some platforms may support other
+    /// signals, possibly available in the `libc` crate.
+    ///
     /// # Errors
     ///
-    /// This function will return an error if the signal is invalid or if the
-    /// child process does not have a process group. The integer values
-    /// associated with signals are implementation-specific, so it's encouraged
-    /// to use a crate that provides posix bindings.
+    /// This function will return an error if the signal is invalid or if the child process does
+    /// not have a process group. The integer values associated with signals are implementation-
+    /// specific, so it is encouraged to use values from the [`sig`] module or from `libc`.
     ///
     /// # Examples
     ///
-    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(target_family = "unix", doc = "```")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_send_signal)]
     ///
-    /// use std::{io, os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
+    /// use std::{io, process::Command};
+    /// use std::os::unix::process::{ChildExt, CommandExt, ExitStatusExt, sig};
     ///
-    /// use libc::SIGTERM;
+    /// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+    /// let mut child1 = Command::new("sleep")
+    ///     .arg("1")
+    ///     .process_group(0)
+    ///     .spawn()?;
+    /// let mut child2 = Command::new("sleep")
+    ///     .arg("1")
+    ///     .process_group(child1.id().cast_signed())
+    ///     .spawn()?;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
-    ///     let child = Command::new("cat")
-    ///         .stdin(Stdio::piped())
-    ///         .process_group(0)
-    ///         .spawn()?;
-    ///     child.send_process_group_signal(SIGTERM)?;
-    ///     # }
-    ///     Ok(())
-    /// }
+    /// child1.send_process_group_signal(sig::TERM)?;
+    ///
+    /// let status1 = child1.wait()?;
+    /// let status2 = child2.wait()?;
+    /// assert_eq!(status1.signal(), Some(sig::TERM));
+    /// assert_eq!(status2.signal(), Some(sig::TERM));
+    /// # }
+    /// # Ok::<(), io::Error>(())
     /// ```
+    #[doc(alias = "killpg")]
     #[unstable(feature = "unix_send_signal", issue = "141975")]
     fn send_process_group_signal(&self, signal: i32) -> io::Result<()>;
 
@@ -587,23 +608,36 @@ pub impl(self) trait ChildExt {
     ///
     /// # Examples
     ///
-    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(target_family = "unix", doc = "```")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_kill_process_group)]
+    /// #![feature(unix_send_signal)]
     ///
-    /// use std::{os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
+    /// use std::{io, process::Command};
+    /// use std::os::unix::process::{ChildExt, CommandExt, ExitStatusExt, sig};
     ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let mut child = Command::new("cat")
-    ///         .stdin(Stdio::piped())
-    ///         .process_group(0)
-    ///         .spawn()?;
-    ///     child.kill_process_group()?;
-    ///     Ok(())
-    /// }
+    /// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+    /// let mut child1 = Command::new("sleep")
+    ///     .arg("1")
+    ///     .process_group(0)
+    ///     .spawn()?;
+    /// let mut child2 = Command::new("sleep")
+    ///     .arg("1")
+    ///     .process_group(child1.id().cast_signed())
+    ///     .spawn()?;
+    ///
+    /// child1.kill_process_group()?;
+    ///
+    /// let status1 = child1.wait()?;
+    /// let status2 = child2.wait()?;
+    /// assert_eq!(status1.signal(), Some(sig::KILL));
+    /// assert_eq!(status2.signal(), Some(sig::KILL));
+    /// # }
+    /// # Ok::<(), io::Error>(())
     /// ```
     ///
     /// [`Child::kill`]: process::Child::kill
+    #[doc(alias = "killpg")]
     #[unstable(feature = "unix_kill_process_group", issue = "156537")]
     fn kill_process_group(&mut self) -> io::Result<()>;
 }
@@ -826,4 +860,228 @@ impl From<OwnedFd> for process::ChildStderr {
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
     crate::sys::process::getppid()
+}
+
+/// Standard POSIX signals.
+///
+/// These signals come from the list at
+/// <https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/signal.h.html>. Note that there are
+/// a small number of platforms that do not have all the signals in this module, but almost all
+/// Unix platforms should have those specified by POSIX.
+#[unstable(feature = "unix_send_signal", issue = "141975")]
+pub mod sig {
+    /* Documentation comes from the table in the POSIX page linked in module docs. `SIGPOLL` and
+     * `SIGPROF` are excluded as POSIX marks them obsolete.
+     *
+     * Don't forget to update `ALL` if available signals change. The actions come from that same
+     * table.
+     */
+
+    /// POSIX-specified default actions.
+    #[cfg(test)]
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) enum Action {
+        /// Abnormal termination.
+        T,
+        /// Abnormal termination with additional action.
+        A,
+        /// Ignored.
+        I,
+        /// Stop the process.
+        S,
+        /// Continue the process, if it is stopped; otherwise, ignore the signal.
+        C,
+    }
+
+    #[cfg(test)]
+    pub(crate) const ALL: &[(i32, Action)] = &[
+        (ABRT, Action::A),
+        (ALRM, Action::T),
+        (BUS, Action::A),
+        #[cfg(not(target_os = "vita"))]
+        (CHLD, Action::I),
+        #[cfg(not(target_os = "vita"))]
+        (CONT, Action::C),
+        (FPE, Action::A),
+        (HUP, Action::T),
+        (ILL, Action::A),
+        (INT, Action::T),
+        (KILL, Action::T),
+        (PIPE, Action::T),
+        (QUIT, Action::A),
+        (SEGV, Action::A),
+        #[cfg(not(target_os = "vita"))]
+        (STOP, Action::S),
+        (SYS, Action::A),
+        (TERM, Action::T),
+        (TRAP, Action::A),
+        #[cfg(not(target_os = "vita"))]
+        (TSTP, Action::S),
+        #[cfg(not(target_os = "vita"))]
+        (TTIN, Action::S),
+        #[cfg(not(target_os = "vita"))]
+        (TTOU, Action::S),
+        #[cfg(not(target_os = "vita"))]
+        (URG, Action::I),
+        #[cfg(not(target_os = "vita"))]
+        (USR1, Action::T),
+        #[cfg(not(target_os = "vita"))]
+        (USR2, Action::T),
+        #[cfg(not(target_os = "vita"))]
+        (VTALRM, Action::T),
+        #[cfg(not(target_os = "vita"))]
+        (WINCH, Action::I),
+        #[cfg(not(target_os = "vita"))]
+        (XCPU, Action::A),
+        #[cfg(not(target_os = "vita"))]
+        (XFSZ, Action::A),
+    ];
+
+    /// Process abort signal (`SIGABRT`).
+    #[doc(alias = "SIGABRT")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const ABRT: i32 = libc::SIGABRT;
+
+    /// Alarm clock (`SIGALRM`).
+    #[doc(alias = "SIGALRM")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const ALRM: i32 = libc::SIGALRM;
+
+    /// Access to an undefined portion of a memory object (`SIGBUS`).
+    #[doc(alias = "SIGBUS")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const BUS: i32 = libc::SIGBUS;
+
+    /// Child process terminated, stopped, or continued (`SIGCHLD`).
+    #[doc(alias = "SIGCHLD")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const CHLD: i32 = libc::SIGCHLD;
+
+    /// Continue executing, if stopped (`SIGCONT`).
+    #[doc(alias = "SIGCONT")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const CONT: i32 = libc::SIGCONT;
+
+    /// Erroneous arithmetic operation (`SIGFPE`).
+    #[doc(alias = "SIGFPE")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const FPE: i32 = libc::SIGFPE;
+
+    /// Hangup (`SIGHUP`).
+    #[doc(alias = "SIGHUP")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const HUP: i32 = libc::SIGHUP;
+
+    /// Illegal instruction (`SIGILL`).
+    #[doc(alias = "SIGILL")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const ILL: i32 = libc::SIGILL;
+
+    /// Terminal interrupt signal (`SIGINT`).
+    #[doc(alias = "SIGINT")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const INT: i32 = libc::SIGINT;
+
+    /// Kill (cannot be caught or ignored) (`SIGKILL`).
+    #[doc(alias = "SIGKILL")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const KILL: i32 = libc::SIGKILL;
+
+    /// Write on a pipe with no one to read it (`SIGPIPE`).
+    #[doc(alias = "SIGPIPE")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const PIPE: i32 = libc::SIGPIPE;
+
+    /// Terminal quit signal (`SIGQUIT`).
+    #[doc(alias = "SIGQUIT")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const QUIT: i32 = libc::SIGQUIT;
+
+    /// Invalid memory reference.
+    #[doc(alias = "SIGSEGV")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const SEGV: i32 = libc::SIGSEGV;
+
+    /// Stop executing (cannot be caught or ignored) (`SIGSTOP`).
+    #[doc(alias = "SIGSTOP")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const STOP: i32 = libc::SIGSTOP;
+
+    /// Bad system call (`SIGSYS`).
+    #[doc(alias = "SIGSYS")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const SYS: i32 = libc::SIGSYS;
+
+    /// Termination signal (`SIGTERM`).
+    #[doc(alias = "SIGTERM")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const TERM: i32 = libc::SIGTERM;
+
+    /// Trace/breakpoint trap (`SIGTRAP`).
+    #[doc(alias = "SIGTRAP")]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const TRAP: i32 = libc::SIGTRAP;
+
+    /// Terminal stop signal (`SIGTSTP`).
+    #[doc(alias = "SIGTSTP")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const TSTP: i32 = libc::SIGTSTP;
+
+    /// Background process attempting read (`SIGTTIN`).
+    #[doc(alias = "SIGTTIN")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const TTIN: i32 = libc::SIGTTIN;
+
+    /// Background process attempting write (`SIGTTOU`).
+    #[doc(alias = "SIGTTOU")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const TTOU: i32 = libc::SIGTTOU;
+
+    /// High bandwidth data is available at a socket (`SIGURG`).
+    #[doc(alias = "SIGURG")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const URG: i32 = libc::SIGURG;
+
+    /// User-defined signal 1 (`SIGUSR1`).
+    #[doc(alias = "SIGUSR1")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const USR1: i32 = libc::SIGUSR1;
+
+    /// User-defined signal 2 (`SIGUSR2`).
+    #[doc(alias = "SIGUSR2")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const USR2: i32 = libc::SIGUSR2;
+
+    /// Virtual timer expired (`SIGVTALRM`).
+    #[doc(alias = "SIGVTALRM")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const VTALRM: i32 = libc::SIGVTALRM;
+
+    /// Terminal window size changed.
+    #[doc(alias = "SIGWINCH")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const WINCH: i32 = libc::SIGWINCH;
+
+    /// CPU time limit exceeded (`SIGXCPU`).
+    #[doc(alias = "SIGXCPU")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const XCPU: i32 = libc::SIGXCPU;
+
+    /// File size limit exceeded (`SIGXFSZ`).
+    #[doc(alias = "SIGXFSZ")]
+    #[cfg(not(target_os = "vita"))]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub const XFSZ: i32 = libc::SIGXFSZ;
 }
