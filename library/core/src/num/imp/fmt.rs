@@ -65,6 +65,8 @@ pub struct Formatted<'a> {
     pub sign: &'static str,
     /// Formatted parts to be rendered after a sign and optional zero padding.
     pub parts: &'a [Part<'a>],
+    /// True if NaN or inf, which should be space-padded rather than zero-padded.
+    pub text: bool,
 }
 
 impl<'a> Formatted<'a> {

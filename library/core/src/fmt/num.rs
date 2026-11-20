@@ -567,7 +567,7 @@ macro_rules! impl_Exp {
                 };
                 // SAFETY: Text is set with ASCII exclusively: either a decimal,
                 // or a LETTER_E, or a dot. ASCII implies valid UTF-8.
-                unsafe { f.pad_formatted_parts(&numfmt::Formatted { sign, parts }) }
+                unsafe { f.pad_formatted_parts(&numfmt::Formatted { sign, parts, text: false }) }
             }
         }
 

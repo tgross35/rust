@@ -1996,7 +1996,8 @@ impl<'a> Formatter<'a> {
                 // remove the sign from the formatted parts
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len() as u16);
-                self.options.fill('0').align(Some(Alignment::Right));
+                let fill = if formatted.text { ' ' } else { '0' };
+                self.options.fill(fill).align(Some(Alignment::Right));
             }
 
             // remaining parts go through the ordinary padding process.
