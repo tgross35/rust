@@ -10,11 +10,6 @@
 use crate::num::FpCategory;
 use crate::{f64, fmt, ops};
 
-/// Lossy `as` casting between two types.
-pub trait CastInto<T: Copy>: Copy {
-    fn cast(self) -> T;
-}
-
 /// Collection of traits that allow us to be generic over integer size.
 pub trait Int:
     Sized
@@ -35,12 +30,6 @@ pub trait Int:
 macro_rules! int {
     ($($ty:ty),+) => {
         $(
-            impl CastInto<i16> for $ty {
-                fn cast(self) -> i16 {
-                    self as i16
-                }
-            }
-
             impl Int for $ty {
                 const ZERO: Self = 0;
                 const ONE: Self = 1;
@@ -50,6 +39,47 @@ macro_rules! int {
 }
 
 int!(u16, u32, u64);
+
+
+/// Trait to express (possibly lossy) casting of integers
+pub trait CastInto<T: Copy>: Copy {
+    /// By default, casts should be exact.
+    #[track_caller]
+    fn cast(self) -> T;
+
+    /// Call for casts that are expected to truncate.
+    ///
+    /// In practice, this is exactly the same as `cast`; the main difference is to document intent
+    /// in code. `cast` may panic in debug mode.
+    fn cast_lossy(self) -> T;
+}
+
+macro_rules! int_cast_into {
+    ($ty:ty) => {
+        int_cast_into!(src: $ty; dst: i16);
+    };
+    (src: $ty:ty; dst:  $($into:ty),*) => {$(
+        impl CastInto<$into> for $ty {
+            #[inline]
+            fn cast(self) -> $into {
+                // All we can really do to enforce casting rules is check the rules when in
+                // debug mode.
+                #[cfg(not(feature = "compiler-builtins"))]
+                debug_assert!(<$into>::try_from(self).is_ok(), "failed cast from {self}");
+                self as $into
+            }
+
+            #[inline]
+            fn cast_lossy(self) -> $into {
+                self as $into
+            }
+        }
+    )*};
+}
+
+int_cast_into!(u16);
+int_cast_into!(u32);
+int_cast_into!(u64);
 
 /// A helper trait to avoid duplicating basically all the conversion code for IEEE floats.
 #[doc(hidden)]
